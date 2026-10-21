@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080d0b">
+<title>NEXUS AI</title>
+<style>
+:root{color-scheme:dark;--bg:#080d0b;--panel:#111a15;--green:#39ff88;--muted:#a0b5a8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#effff4;font:16px system-ui,sans-serif}
+main{max-width:700px;margin:auto;padding:24px 18px}
+header{display:flex;align-items:center;gap:12px;margin:12px 0 30px}
+.logo{width:48px;height:48px;border:1px solid var(--green);border-radius:14px;display:grid;place-items:center;color:var(--green);font-size:24px}
+h1{font-size:25px;letter-spacing:2px;margin:0}
+small,.muted{color:var(--muted)}
+.status{margin-left:auto;color:var(--green);font-size:12px}
+h2{font-size:18px;margin:25px 0 12px}
+.panel{background:var(--panel);border:1px solid #26372c;border-radius:16px;padding:16px;margin-bottom:14px}
+textarea,input{width:100%;padding:14px;background:#080d0b;color:white;border:1px solid #354b3c;border-radius:10px;font:inherit}
+textarea{min-height:100px;resize:vertical}
+button{padding:13px;border-radius:10px;border:1px solid var(--green);background:#10271a;color:var(--green);font:inherit;font-weight:650;cursor:pointer}
+button:focus,input:focus,textarea:focus{outline:3px solid #a2ffc5;outline-offset:2px}
+.primary{width:100%;margin-top:10px;background:var(--green);color:#06110a}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{min-height:100px;text-align:left}
+.tile span{display:block;font-size:24px;margin-bottom:8px}
+#result{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+footer{margin-top:25px;font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="logo" aria-hidden="true">N</div>
+<div><h1>NEXUS AI</h1><small>DEFENSIVE INTELLIGENCE</small></div>
+<div class="status">● LOCAL UI</div>
+</header>
+<section class="panel">
+<h2>¿Qué necesitas hacer?</h2>
+<label for="task">Escribe tu tarea</label>
+<textarea id="task" placeholder="Ej.: Explícame cómo proteger mi Wi-Fi..."></textarea>
+<button class="primary" onclick="askNexus()">Analizar solicitud</button>
+<p id="result" role="status" aria-live="polite">Sistema preparado. Selecciona una herramienta o escribe una tarea.</p>
+</section>
+<h2>Laboratorios</h2>
+<div class="grid">
+<button class="tile" onclick="tool('wifi')"><span>⌁</span>Wi-Fi seguro</button>
+<button class="tile" onclick="tool('security')"><span>◈</span>Seguridad</button>
+<button class="tile" onclick="tool('python')"><span>⌘</span>Python 3</button>
+<button class="tile" onclick="tool('java')"><span>▣</span>Java</button>
+</div>
+<section class="panel" style="margin-top:18px">
+<h2>Estado del laboratorio</h2>
+<p>Interfaz: <strong>activa</strong></p>
+<p>Auditorías: requieren autorización y permisos compatibles.</p>
+<p>Python/Java: el editor y la ejecución se incorporarán en módulos posteriores.</p>
+<p>IA: aún no conectada a un modelo.</p>
+</section>
+<footer>NEXUS AI · Prototipo inicial · Accesibilidad y uso responsable</footer>
+</main>
+<script>
+function tool(name){
+const data={
+wifi:"WI-FI SEGURO\nRevisa la seguridad de tu router, utiliza WPA2-AES o WPA3, cambia la contraseña de administración predeterminada y desactiva WPS si no lo necesitas. El análisis real de redes requiere permisos Android.",
+security:"SEGURIDAD DEFENSIVA\nPuedes revisar configuraciones, analizar registros propios y elaborar una lista de riesgos. No se ha ejecutado ningún escaneo real.",
+python:"PYTHON 3\nMódulo pendiente. La ejecución de código necesitará un entorno aislado y límites de recursos.",
+java:"JAVA\nMódulo pendiente. La ejecución necesitará un entorno compatible y aislado."
+};
+document.getElementById("result").textContent=data[name]||"Herramienta no disponible.";
+}
+function askNexus(){
+const task=document.getElementById("task").value.trim();
+document.getElementById("result").textContent=task?
+"Solicitud recibida: "+task+"\n\nEsta versión es una interfaz local. Para obtener respuestas inteligentes hay que conectar un modelo de IA; todavía no está conectado.":
+"Escribe primero qué necesitas.";
+}
+</script>
+</body>
+</html>
