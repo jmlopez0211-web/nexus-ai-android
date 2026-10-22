@@ -22,7 +22,7 @@ def health():
 @app.route("/api/ask", methods=["POST"])
 def ask():
     data = request.get_json(silent=True) or {}
-    task = str(data.get("task") or data.get("prompt") or data.get("mensaje") or "").strip()
+    task = str(data.get("task") or data.get("tarea") or data.get("prompt") or data.get("mensaje") or "").strip()
 
     if not task:
         return jsonify({"error": "Escribe una tarea."}), 400
