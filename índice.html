@@ -103,17 +103,9 @@ async function askNexus()  {
       "Error de conexión: " + error.message;
   }
 }
-
-}
-const q=task.toLowerCase();
-if(/wifi|wi-fi|router|red inalámbrica/.test(q)){
-result.textContent="GUÍA DE SEGURIDAD WI-FI\n\n1. Activa WPA3-Personal o WPA2-AES.\n2. Usa una contraseña Wi-Fi larga y exclusiva.\n3. Cambia la contraseña de administrador del router.\n4. Desactiva WPS si no lo necesitas.\n5. Actualiza el firmware del router.\n6. Revisa los dispositivos conectados desde la aplicación oficial del router.\n7. Crea una red de invitados para las visitas.\n\nIMPORTANTE: esta es una lista de comprobación, no un análisis real de tu red. No compartas aquí tus contraseñas.";
-}else if(/contraseña|password|phishing|estafa|seguridad/.test(q)){
-result.textContent="CONSEJOS DE SEGURIDAD\n\n• Utiliza contraseñas únicas y largas.\n• Activa la autenticación en dos pasos.\n• No abras enlaces inesperados.\n• Actualiza el móvil y las aplicaciones.\n• Comprueba las direcciones de las páginas antes de iniciar sesión.\n\nEsta página todavía no está conectada a una IA ni realiza análisis del dispositivo.";
-}else if(/python|java|código|programa/.test(q)){
-result.textContent="LABORATORIO DE PROGRAMACIÓN\n\nPuedo ayudarte a preparar código y explicar errores cuando conectemos un modelo de IA. Esta versión todavía no ejecuta Python ni Java.";
-}else{
-result.textContent="SOLICITUD RECIBIDA\n\nLa IA todavía no está conectada. Puedo ofrecer guías básicas de seguridad, pero aún no puedo responder como un asistente inteligente ni analizar tu dispositivo.";
+  } catch (error) {
+    resultado.textContent = "Error de conexión: " + error.message;
+  }
 }
 </script>
 </body>
