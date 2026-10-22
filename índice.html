@@ -40,7 +40,7 @@ footer{margin-top:25px;font-size:13px;color:var(--muted)}
 <h2>¿Qué necesitas hacer?</h2>
 <label for="task">Escribe tu tarea</label>
 <textarea id="task" placeholder="Ej.: Explícame cómo proteger mi Wi-Fi..."></textarea>
-<button class="primary" onclick="askNexus()">Analizar solicitud</button>
+<button class="primary" onclick="document.getElementById('result').textContent='BOTÓN ACTIVO'">Analizar solicitud</button>
 <p id="result" role="status" aria-live="polite">Sistema preparado. Selecciona una herramienta o escribe una tarea.</p>
 </section>
 <h2>Laboratorios</h2>
