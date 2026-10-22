@@ -86,7 +86,7 @@ async function askNexus()  {
   resultado.textContent = "NEXUS AI está pensando...";
 
   try {
-    const respuesta = await fetch("/api/ask", {
+    const respuesta = await fetch("https://nexus-ai-android-3.onrender.com/api/ask", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
