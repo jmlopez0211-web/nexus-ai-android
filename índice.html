@@ -74,7 +74,29 @@ function tool(name) {
     tools[name] || "Herramienta no disponible.";
 }
 
-async function askNexus()  {
+async function comprobarConexion() {
+  const estado = document.querySelector(
+    ".panel p:last-child"
+  );
+
+  try {
+    const respuesta = await fetch(
+      "https://nexus-ai-android-3.onrender.com/api/health"
+    );
+
+    if (!respuesta.ok) {
+      throw new Error("Servidor no disponible");
+    }
+
+    const datos = await respuesta.json();
+
+    estado.textContent = datos.ai_connected
+      ? "IA: servidor disponible; conexión pendiente de prueba."
+      : "IA: falta configurar la clave del modelo.";
+  } catch (error) {
+    estado.textContent = "IA: no se pudo comprobar la conexión.";
+  }
+}
   const tarea = document.getElementById("task").value.trim();
   const resultado = document.getElementById("result");
 
