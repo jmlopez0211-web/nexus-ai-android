@@ -6,7 +6,12 @@ import requests
 BASE_DIR = Path(__file__).resolve().parent
 
 app = Flask(__name__, static_folder=None)
-
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
 @app.route("/", methods=["GET"])
 def home():
     return send_from_directory(str(BASE_DIR), "índice.html")
