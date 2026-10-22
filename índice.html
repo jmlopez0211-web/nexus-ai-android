@@ -100,12 +100,10 @@ async function askNexus()  {
       datos.respuesta || "La IA no ha devuelto una respuesta.";
   } catch (error) {
     resultado.textContent =
-      "Error de conexión: " + error.message;
+      "Error de conexión: " + 
+  error.message;
   }
-}
-  } catch (error) {
-    resultado.textContent = "Error de conexión: " + error.message;
-  }
+  
 }
 </script>
 </body>
