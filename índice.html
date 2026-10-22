@@ -62,13 +62,16 @@ footer{margin-top:25px;font-size:13px;color:var(--muted)}
 <script 
 src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-function tool(name){
-wifi:"WI-FI SEGURO\nRevisa la seguridad de tu router, utiliza WPA2-AES o WPA3, cambia la contraseña de administración predeterminada y desactiva WPS si no lo necesitas. El análisis real de redes requiere permisos Android.",
-security:"SEGURIDAD DEFENSIVA\nPuedes revisar configuraciones, analizar registros propios y elaborar una lista de riesgos. No se ha ejecutado ningún escaneo real.",
-python:"PYTHON 3\nMódulo pendiente. La ejecución de código necesitará un entorno aislado y límites de recursos.",
-java:"JAVA\nMódulo pendiente. La ejecución necesitará un entorno compatible y aislado."
+const tools = {
+  wifi: "WI-FI SEGURO\nRevisa la seguridad de tu router, utiliza WPA2-AES o WPA3 y cambia la contraseña predeterminada.",
+  security: "SEGURIDAD DEFENSIVA\nRevisa configuraciones y registros de tus propios sistemas. No se ha ejecutado ningún escaneo real.",
+  python: "PYTHON 3\nMódulo pendiente. La ejecución necesitará un entorno aislado.",
+  java: "JAVA\nMódulo pendiente. La ejecución necesitará un entorno compatible y aislado."
 };
-document.getElementById("result").textContent=data[name]||"Herramienta no disponible.";
+
+function tool(name) {
+  document.getElementById("result").textContent =
+    tools[name] || "Herramienta no disponible.";
 }
 
 async function askNexus()  {
