@@ -90,13 +90,14 @@ async function comprobarConexion() {
 
     const datos = await respuesta.json();
 
-    estado.textContent = datos.ai_connected
+        estado.textContent = datos.ai_connected
       ? "IA: servidor disponible; conexión pendiente de prueba."
       : "IA: falta configurar la clave del modelo.";
-  } catch (error) {
+    } catch (error) {
     estado.textContent = "IA: no se pudo comprobar la conexión.";
   }
 }
+async function askNexus() {
   const tarea = document.getElementById("task").value.trim();
   const resultado = document.getElementById("result");
 
@@ -129,6 +130,7 @@ async function comprobarConexion() {
       "Error de conexión: " + error.message;
   }
 }
+comprobarConexion();
 </script>
 </body>
 </html>
