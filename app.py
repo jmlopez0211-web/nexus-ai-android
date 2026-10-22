@@ -39,7 +39,7 @@ def ask():
                 "Content-Type": "application/json"
             },
             json={
-                "model": "llama-3.3-70b-versatile",
+                "model": "openai/gpt-oss-20b",
                 "messages": [
                     {
                         "role": "system",
@@ -57,6 +57,8 @@ def ask():
         )
         response.raise_for_status()
         result = response.json()
+        
+        
         answer = result["choices"][0]["message"]["content"]
         return jsonify({"respuesta": answer})
     except requests.RequestException:
