@@ -180,6 +180,13 @@ footer{border-top:1px solid #18364a;padding-top:16px}
     <div class="notice" style="margin-top:10px"><strong>Motor de auditoría de contraseñas offline</strong><br>Utiliza la evaluación local y el diccionario .txt del apartado de seguridad Wi-Fi. No realiza conexiones ni intentos de autenticación.</div>
   </section>
   <div id="wifi-networks" aria-live="polite"></div>
+  <section class="panel" id="wifi-radio-intelligence" aria-labelledby="wifi-radio-title">
+    <h3 id="wifi-radio-title">Inteligencia de radio · estilo WiFi Warden</h3>
+    <p class="muted">Canal, banda, señal y posibles duplicados calculados a partir de los anuncios recibidos. No estima distancias ni identifica al propietario de un punto de acceso.</p>
+    <div class="audit-actions"><button id="analyze-radio-intelligence" type="button">Analizar espectro detectado</button></div>
+    <p id="radio-intelligence-status" class="muted" role="status" aria-live="polite">Carga primero las redes reales con Termux:API.</p>
+    <div id="radio-intelligence-results"></div>
+  </section>
 
   <section class="panel" id="wireless-audit-panel" aria-labelledby="wireless-audit-title">
     <h3 id="wireless-audit-title">Auditoría defensiva de seguridad Wi-Fi</h3>
@@ -599,6 +606,69 @@ function classifyWifiSecurity(network) {
   const signal = Number.isFinite(rssi) ? (rssi >= -60 ? "Fuerte" : rssi >= -75 ? "Media" : "Débil") : "No disponible";
   return {security, severity, flags, signal};
 }
+function wifiRadioDetails(network) {
+  const mhz=Number(network.frequency_mhz);
+  let band="Banda desconocida", channel="No disponible";
+  if(Number.isFinite(mhz) && mhz>0){
+    if(mhz>=2412 && mhz<=2484){
+      band="2,4 GHz";
+      channel=mhz===2484?14:Math.round((mhz-2407)/5);
+    } else if(mhz>=5000 && mhz<5925){
+      band="5 GHz"; channel=Math.round((mhz-5000)/5);
+    } else if(mhz>=5925 && mhz<=7125){
+      band="6 GHz"; channel=Math.round((mhz-5950)/5);
+    } else if(mhz>=57000 && mhz<=71000){
+      band="60 GHz"; channel="No calculado";
+    }
+  }
+  const rssi=Number(network.rssi);
+  const signal=Number.isFinite(rssi)?(rssi>=-50?"Excelente":rssi>=-60?"Fuerte":rssi>=-70?"Media":rssi>=-80?"Débil":"Muy débil"):"No disponible";
+  return {band,channel,signal};
+}
+function analyzeRadioIntelligence(){
+  const status=document.getElementById("radio-intelligence-status");
+  const root=document.getElementById("radio-intelligence-results");
+  if(!Array.isArray(nexusWifiInventory)||!nexusWifiInventory.length){
+    status.textContent="No hay inventario real. Consulta primero Termux:API.";return;
+  }
+  const entries=nexusWifiInventory.map(n=>({...n,...wifiRadioDetails(n)}));
+  const byBssid=new Map();
+  const bySsid=new Map();
+  entries.forEach(n=>{
+    const b=String(n.bssid||"").toLowerCase();
+    const s=String(n.ssid||"").trim().toLocaleLowerCase();
+    if(b)byBssid.set(b,(byBssid.get(b)||0)+1);
+    if(s)bySsid.set(s,(bySsid.get(s)||0)+1);
+  });
+  const duplicateBssid=[...byBssid.values()].filter(v=>v>1).length;
+  const repeatedNames=[...bySsid.values()].filter(v=>v>1).length;
+  const bands={"2,4 GHz":0,"5 GHz":0,"6 GHz":0,"60 GHz":0,"Banda desconocida":0};
+  entries.forEach(n=>bands[n.band]=(bands[n.band]||0)+1);
+  root.replaceChildren();
+  const metrics=document.createElement("div");metrics.className="web-result";
+  [["Puntos detectados",entries.length],["2,4 GHz",bands["2,4 GHz"]],["5 GHz",bands["5 GHz"]],["6 GHz",bands["6 GHz"]],["SSID repetidos",repeatedNames],["BSSID duplicados",duplicateBssid]].forEach(([label,value])=>{
+    const card=document.createElement("div");card.className="metric";
+    const strong=document.createElement("strong");strong.textContent=value;
+    const small=document.createElement("small");small.textContent=label;
+    card.append(strong,small);metrics.append(card);
+  });
+  root.append(metrics);
+  entries.sort((a,b)=>(Number(b.rssi)||-999)-(Number(a.rssi)||-999));
+  entries.forEach(n=>{
+    const row=document.createElement("article");row.className="finding info";
+    const title=document.createElement("h4");title.textContent=(n.ssid||"(SSID oculto)")+" · "+n.band;
+    const detail=document.createElement("p");
+    detail.textContent="Canal: "+n.channel+" · Señal: "+n.signal+" ("+(n.rssi??"N/D")+" dBm) · "+(n.frequency_mhz??"N/D")+" MHz";
+    const id=document.createElement("p");id.className="muted";
+    id.textContent="BSSID: "+(n.bssid||"No informado")+" · Ancho anunciado: "+(n.channel_bandwidth_mhz??"N/D")+" MHz";
+    row.append(title,detail,id);root.append(row);
+  });
+  const note=document.createElement("p");note.className="muted";
+  note.textContent="Los canales se derivan de la frecuencia reportada por Android. Un SSID repetido puede ser una red mallada o varios puntos legítimos; no es una prueba de suplantación. La intensidad cambia con el entorno y no permite calcular distancia fiable.";
+  root.append(note);
+  status.textContent="Análisis de radio completado. Datos derivados de "+entries.length+" anuncios.";
+}
+document.getElementById("analyze-radio-intelligence").addEventListener("click",analyzeRadioIntelligence);
 function runWirelessAudit() {
   const status = document.getElementById("wireless-audit-status");
   const root = document.getElementById("wireless-audit-results");
