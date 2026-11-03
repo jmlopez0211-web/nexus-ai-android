@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
+from nexus_wireless_engine import inventory_tools
+
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
 TOKEN_FILE = os.path.expanduser("~/.nexus_bridge_token")
@@ -188,6 +190,8 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/api/status":
             return self._reply(200, {"ok": True, "service": "NEXUS IA local bridge", "host": HOST, "port": PORT, "wifi_api": bool(shutil.which("termux-wifi-scaninfo")), "cached_networks": len(WIFI_CACHE), "cache_age_seconds": max(0, int(time.time() - WIFI_CACHE_SAVED_AT)) if WIFI_CACHE_SAVED_AT else None}, origin)
+        if path == "/api/tooling":
+            return self._reply(200, inventory_tools(), origin)
         if path != "/api/wifi":
             return self._reply(404, {"ok": False, "error": "Ruta no encontrada"}, origin)
         command = shutil.which("termux-wifi-scaninfo")
