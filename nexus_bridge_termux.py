@@ -29,7 +29,7 @@ def load_bridge_token():
     token = secrets.token_urlsafe(32)
     fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as token_file:
-        token_file.write(token + "\\n")
+        token_file.write(token + "\n")
     try:
         os.chmod(TOKEN_FILE, 0o600)
     except OSError:
@@ -73,7 +73,7 @@ def save_wifi_cache(networks):
     saved_at = time.time()
     directory = os.path.dirname(WIFI_CACHE_FILE)
     os.makedirs(directory, mode=0o700, exist_ok=True)
-    temporary = WIFI_CACHE_FILE + ".tmp"
+    temporary = WIFI_CACHE_FILE + "." + secrets.token_hex(6) + ".tmp"
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as cache_file:
         json.dump({"saved_at": saved_at, "networks": networks}, cache_file, ensure_ascii=False)
@@ -214,7 +214,10 @@ class Handler(BaseHTTPRequestHandler):
             now = time.time()
             if networks:
                 WIFI_CACHE = networks
-                WIFI_CACHE_SAVED_AT = save_wifi_cache(networks)
+                try:
+                    WIFI_CACHE_SAVED_AT = save_wifi_cache(networks)
+                except OSError:
+                    WIFI_CACHE_SAVED_AT = now
                 cached = False
             elif WIFI_CACHE and 0 <= now - WIFI_CACHE_SAVED_AT <= WIFI_CACHE_TTL_SECONDS:
                 networks = list(WIFI_CACHE)
