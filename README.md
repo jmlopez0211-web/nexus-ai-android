@@ -13,6 +13,29 @@ Panel web de asistencia y diagnóstico defensivo. Diseñado para navegador móvi
   - Exportación JSON e historial local del navegador.
 - Interfaz adaptable, accesible y con ilustración SVG original integrada.
 
+## Puente local Android/Termux
+
+El repositorio incorpora `nexus_bridge_termux.py`, independiente del puente antiguo de SCANNER OF DEATH.
+En Termux, dentro de la carpeta del repositorio:
+
+```bash
+python nexus_bridge_termux.py
+```
+
+El proceso escucha exclusivamente en `127.0.0.1:8766` y muestra un token de sesión en la terminal.
+Introduce `http://127.0.0.1:8766` y ese token en el Centro Wi-Fi de NEXUS. No publiques ni reenvíes
+ese puerto. El puente ofrece:
+
+- `GET /api/status`: estado del puente.
+- `GET /api/wifi`: lectura de redes cercanas mediante Termux:API, si está instalada y autorizada.
+- `POST /api/scan`: inventario TCP de un único IPv4 privado autorizado, limitado a 20 puertos habituales.
+
+El escaneo de puertos no recorre rangos ni subredes, no prueba contraseñas y no identifica versiones.
+El nombre del servicio se infiere del puerto; un puerto abierto no demuestra por sí solo una vulnerabilidad.
+El puente valida la IP privada, requiere el token y confirmación de autorización, aplica una lista CORS
+limitada y solo escucha en loopback. Si el navegador bloquea el acceso HTTPS a localhost por sus políticas
+de red privada, el panel indicará el error; no se debe exponer el puente a Internet como solución.
+
 ## Auditoría web: alcance y límites
 
 La ruta `POST /api/audit/web` requiere `{"url":"https://example.org/","authorized":true}`.
