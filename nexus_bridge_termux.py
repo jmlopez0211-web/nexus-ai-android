@@ -7,13 +7,36 @@ import os
 import secrets
 import shutil
 import socket
+import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
-TOKEN = os.environ.get("NEXUS_BRIDGE_TOKEN") or secrets.token_urlsafe(24)
+TOKEN_FILE = os.path.expanduser("~/.nexus_bridge_token")
+def load_bridge_token():
+    configured = os.environ.get("NEXUS_BRIDGE_TOKEN", "").strip()
+    if configured:
+        return configured
+    try:
+        with open(TOKEN_FILE, "r", encoding="utf-8") as token_file:
+            stored = token_file.read().strip()
+        if stored:
+            return stored
+    except OSError:
+        pass
+    token = secrets.token_urlsafe(32)
+    fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as token_file:
+        token_file.write(token + "\\n")
+    try:
+        os.chmod(TOKEN_FILE, 0o600)
+    except OSError:
+        pass
+    return token
+
+TOKEN = load_bridge_token()
 ALLOWED_ORIGINS = {
     item.strip() for item in os.environ.get(
         "NEXUS_ALLOWED_ORIGINS",
@@ -29,7 +52,40 @@ PORTS = {
     27017: "MongoDB"
 }
 CONNECT_TIMEOUT = 0.45
-WIFI_CACHE = []
+WIFI_CACHE_FILE = os.path.join(os.path.expanduser("~"), ".cache", "nexus-ai", "wifi-inventory.json")
+WIFI_CACHE_TTL_SECONDS = 900
+
+
+def load_wifi_cache():
+    try:
+        with open(WIFI_CACHE_FILE, "r", encoding="utf-8") as cache_file:
+            payload = json.load(cache_file)
+        saved_at = float(payload.get("saved_at", 0))
+        networks = payload.get("networks", [])
+        if isinstance(networks, list) and networks and 0 <= time.time() - saved_at <= WIFI_CACHE_TTL_SECONDS:
+            return networks, saved_at
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    return [], 0.0
+
+
+def save_wifi_cache(networks):
+    saved_at = time.time()
+    directory = os.path.dirname(WIFI_CACHE_FILE)
+    os.makedirs(directory, mode=0o700, exist_ok=True)
+    temporary = WIFI_CACHE_FILE + ".tmp"
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as cache_file:
+        json.dump({"saved_at": saved_at, "networks": networks}, cache_file, ensure_ascii=False)
+    os.replace(temporary, WIFI_CACHE_FILE)
+    try:
+        os.chmod(WIFI_CACHE_FILE, 0o600)
+    except OSError:
+        pass
+    return saved_at
+
+
+WIFI_CACHE, WIFI_CACHE_SAVED_AT = load_wifi_cache()
 
 
 def validate_lan_target(value):
@@ -130,7 +186,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = urlparse(self.path).path
         if path == "/api/status":
-            return self._reply(200, {"ok": True, "service": "NEXUS IA local bridge", "host": HOST, "port": PORT, "wifi_api": bool(shutil.which("termux-wifi-scaninfo"))}, origin)
+            return self._reply(200, {"ok": True, "service": "NEXUS IA local bridge", "host": HOST, "port": PORT, "wifi_api": bool(shutil.which("termux-wifi-scaninfo")), "cached_networks": len(WIFI_CACHE), "cache_age_seconds": max(0, int(time.time() - WIFI_CACHE_SAVED_AT)) if WIFI_CACHE_SAVED_AT else None}, origin)
         if path != "/api/wifi":
             return self._reply(404, {"ok": False, "error": "Ruta no encontrada"}, origin)
         command = shutil.which("termux-wifi-scaninfo")
@@ -154,14 +210,18 @@ class Handler(BaseHTTPRequestHandler):
 
             # Android may temporarily return an empty/partial scan because of
             # Wi-Fi scan throttling. Preserve the last non-empty inventory.
-            global WIFI_CACHE
+            global WIFI_CACHE, WIFI_CACHE_SAVED_AT
+            now = time.time()
             if networks:
                 WIFI_CACHE = networks
+                WIFI_CACHE_SAVED_AT = save_wifi_cache(networks)
                 cached = False
-            elif WIFI_CACHE:
+            elif WIFI_CACHE and 0 <= now - WIFI_CACHE_SAVED_AT <= WIFI_CACHE_TTL_SECONDS:
                 networks = list(WIFI_CACHE)
                 cached = True
             else:
+                WIFI_CACHE = []
+                WIFI_CACHE_SAVED_AT = 0.0
                 cached = False
             return self._reply(200, {
                 "ok": True,
@@ -204,7 +264,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"NEXUS bridge: http://{HOST}:{PORT} (solo loopback)")
-    print("Token local para el campo del panel NEXUS: " + TOKEN)
+    print("Token privado cargado desde NEXUS_BRIDGE_TOKEN o ~/.nexus_bridge_token; no se muestra.")
     print("No publiques ni reenvíes el puerto 8766.")
     try:
         server.serve_forever()
