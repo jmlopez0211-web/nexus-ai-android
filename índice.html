@@ -214,7 +214,11 @@ function tool(name) {
     renderWifiApps();
     renderWifiHistory();
     const saved = localStorage.getItem("nexus_wifi_bridge_url");
-    if (saved) document.getElementById("nexus-wifi-bridge").value = saved;
+    if (saved) {
+      const migrated = saved.replace(/:8765\/?$/, ":8766");
+      document.getElementById("nexus-wifi-bridge").value = migrated;
+      if (migrated !== saved) localStorage.setItem("nexus_wifi_bridge_url", migrated);
+    }
     return;
   }
   document.getElementById("result").textContent =
