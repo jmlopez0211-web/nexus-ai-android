@@ -50,6 +50,18 @@ diagnóstico local se utiliza el puente Termux, que debe permanecer ligado a loo
 a Internet. El navegador puede bloquear solicitudes a localhost desde un sitio HTTPS según las
 políticas de origen/red privada del dispositivo.
 
+## Auditoría defensiva Wi-Fi
+
+El Centro Wi-Fi incluye un análisis pasivo de los anuncios recibidos por Termux:API:
+- Clasifica las capacidades anunciadas como WPA3, WPA2, WPA heredado o red abierta/sin cifrado anunciado.
+- Señala WPS anunciado y ofrece recomendaciones de configuración.
+- Resume intensidad de señal y frecuencia.
+- Exporta un informe JSON local.
+
+Incluye además una comprobación offline de la fortaleza de una contraseña que el usuario controla. La contraseña se procesa en el navegador, se borra del campo al terminar y no se transmite ni se guarda. Puede compararse con un diccionario .txt elegido por el usuario (máximo 5 MB), procesado localmente y sin subirlo al servidor.
+
+**Límites deliberados:** no captura handshakes, no recupera claves de redes, no ejecuta fuerza bruta ni ataques de diccionario contra puntos de acceso, no intenta autenticarse y no prueba contraseñas contra redes cercanas. El análisis Wi-Fi se basa únicamente en metadatos anunciados y no demuestra que una red sea vulnerable. WPS anunciado es un indicador para revisar, no una vulnerabilidad confirmada.
+
 ## Estado de Wapiti
 
 Los archivos fuente Wapiti recibidos se han inspeccionado, pero **el motor Wapiti completo todavía
