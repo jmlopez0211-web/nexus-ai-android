@@ -59,6 +59,8 @@ El Centro Wi-Fi incluye un análisis pasivo de los anuncios recibidos por Termux
 - Resume intensidad de señal y frecuencia.
 - Exporta un informe JSON local.
 
+Añade un módulo de inteligencia de radio inspirado en analizadores Wi-Fi: deriva canal y banda de la frecuencia informada por Android, clasifica niveles de señal, resume bandas y señala SSID/BSSID repetidos. Los duplicados son observaciones, no alertas de suplantación: redes malladas y varios puntos legítimos pueden compartir SSID. No calcula distancias porque RSSI no permite una estimación fiable en entornos reales.
+
 Incluye además una comprobación offline de la contraseña de una red que el usuario controla. La compara con una pequeña lista integrada de claves habituales y, opcionalmente, con un diccionario .txt elegido por el usuario (máximo 5 MB). Todo se procesa en el navegador: la contraseña se borra del campo al terminar y no se transmite ni se guarda. Es una comparación exacta de texto y una heurística orientativa, no una estimación criptográfica de entropía.
 
 **Límites deliberados:** no captura handshakes, no recupera claves de redes, no ejecuta fuerza bruta ni ataques de diccionario contra puntos de acceso, no intenta autenticarse ni lanza intentos de contraseña contra ninguna red. La lista integrada es breve y no exhaustiva; una ausencia de coincidencia no demuestra que la contraseña sea segura. El análisis Wi-Fi se basa únicamente en metadatos anunciados y no demuestra que una red sea vulnerable. WPS anunciado es un indicador para revisar, no una vulnerabilidad confirmada.
