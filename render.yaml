@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: nexus-ai-android
+    name: nexus-ai-android-3
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn main:app
