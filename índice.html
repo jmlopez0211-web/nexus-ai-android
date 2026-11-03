@@ -27,6 +27,18 @@ button:focus,input:focus,textarea:focus{outline:3px solid #a2ffc5;outline-offset
 .tile span{display:block;font-size:24px;margin-bottom:8px}
 #result{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
 footer{margin-top:25px;font-size:13px;color:var(--muted)}
+
+#wifi-center[hidden]{display:none}
+.wifi-tools{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wifi-tools a,.wifi-tools button{display:block;text-align:left;text-decoration:none;padding:13px;border:1px solid #354b3c;border-radius:10px;background:#0b1710;color:#dffff0}
+.wifi-tools small{display:block;margin-top:5px;line-height:1.4}
+.notice{padding:12px;border-left:3px solid var(--green);background:#0b1710;border-radius:8px;color:#d7e9dc;line-height:1.5}
+.rowline{display:flex;gap:8px;align-items:center;margin-top:10px}
+.rowline input{flex:1;min-width:0}
+.item{padding:10px;border-bottom:1px solid #26372c}
+.item:last-child{border:0}
+@media(max-width:420px){.wifi-tools{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -50,6 +62,42 @@ footer{margin-top:25px;font-size:13px;color:var(--muted)}
 <button class="tile" onclick="tool('python')"><span>⌘</span>Python 3</button>
 <button class="tile" onclick="tool('java')"><span>▣</span>Java</button>
 </div>
+
+<section id="wifi-center" class="panel" hidden aria-labelledby="wifi-title">
+  <h2 id="wifi-title">📶 Centro de auditoría Wi-Fi</h2>
+  <p class="muted">Herramientas para redes propias o con autorización expresa.</p>
+  <div class="notice"><strong>Conexión Android nativa: pendiente.</strong><br>La web no puede enumerar aplicaciones instaladas, leer contraseñas Wi-Fi protegidas ni realizar escaneos de red de bajo nivel. Para automatizar esas funciones se necesita el módulo Android nativo y sus permisos.</div>
+  <h3>Herramientas de auditoría</h3>
+  <div class="wifi-tools">
+    <a href="https://play.google.com/store/search?q=Fing%20network%20tools&c=apps" target="_blank" rel="noopener">🔎 Fing<small>Inventario de dispositivos de la red local.</small></a>
+    <a href="https://play.google.com/store/search?q=WiFiman&c=apps" target="_blank" rel="noopener">📡 WiFiman<small>Diagnóstico de Wi-Fi y rendimiento.</small></a>
+    <a href="https://play.google.com/store/search?q=Network%20Analyzer&c=apps" target="_blank" rel="noopener">🧭 Network Analyzer<small>Información de red y diagnóstico.</small></a>
+    <a href="https://play.google.com/store/search?q=PCAPdroid&c=apps" target="_blank" rel="noopener">🛡️ PCAPdroid<small>Análisis local del tráfico del dispositivo.</small></a>
+    <a href="https://play.google.com/store/search?q=Termux&c=apps" target="_blank" rel="noopener">⌨️ Termux<small>Terminal Android para herramientas compatibles.</small></a>
+    <a href="https://play.google.com/store/search?q=WiFi%20Analyzer&c=apps" target="_blank" rel="noopener">📶 WiFi Analyzer<small>Canales, señal e interferencias.</small></a>
+  </div>
+  <h3>Mis aplicaciones Wi-Fi</h3>
+  <p class="muted">Registro local de las herramientas que tienes instaladas. La detección automática llegará con el módulo nativo.</p>
+  <div class="rowline">
+    <input id="wifi-app-name" type="text" maxlength="60" placeholder="Nombre de la aplicación" aria-label="Nombre de la aplicación">
+    <button type="button" onclick="addWifiApp()">Añadir</button>
+  </div>
+  <div id="wifi-app-list" class="panel" aria-live="polite"><p class="muted">Todavía no has añadido aplicaciones.</p></div>
+  <h3>Comprobaciones y accesos</h3>
+  <div class="wifi-tools">
+    <button type="button" onclick="wifiInfo('devices')">Dispositivos conectados<small>El escaneo automático requiere el módulo Android nativo o una herramienta compatible.</small></button>
+    <button type="button" onclick="wifiInfo('security')">Seguridad del router<small>Comprueba WPA2-AES/WPA3, WPS y contraseña de administración.</small></button>
+    <button type="button" onclick="wifiInfo('password')">Mis claves Wi-Fi<small>Android permite compartir la red guardada mediante QR en Ajustes, según versión y fabricante.</small></button>
+    <button type="button" onclick="wifiInfo('history')">Historial de auditorías<small>Exporta un registro local de tus revisiones.</small></button>
+  </div>
+  <div id="wifi-detail" class="notice" style="margin-top:12px" role="status">Selecciona una comprobación para ver cómo realizarla.</div>
+  <div class="rowline">
+    <button type="button" onclick="exportWifiReport()">Exportar informe</button>
+    <button type="button" onclick="clearWifiHistory()">Borrar historial local</button>
+  </div>
+  <div id="wifi-history" class="muted" style="margin-top:10px"></div>
+</section>
+
 <section class="panel" style="margin-top:18px">
 <h2>Estado del laboratorio</h2>
 <p>Interfaz: <strong>activa</strong></p>
@@ -70,6 +118,14 @@ const tools = {
 };
 
 function tool(name) {
+  if (name === "wifi") {
+    const panel = document.getElementById("wifi-center");
+    panel.hidden = false;
+    panel.scrollIntoView({behavior:"smooth", block:"start"});
+    renderWifiApps();
+    renderWifiHistory();
+    return;
+  }
   document.getElementById("result").textContent =
     tools[name] || "Herramienta no disponible.";
 }
@@ -131,6 +187,53 @@ async function askNexus() {
   }
 }
 comprobarConexion();
+</script>
+<script>
+const WIFI_APPS_KEY = "nexus_wifi_apps_v1";
+const WIFI_HISTORY_KEY = "nexus_wifi_history_v1";
+function readLocal(key){try{return JSON.parse(localStorage.getItem(key)||"[]")}catch(_){return []}}
+function addWifiApp(){
+  const input=document.getElementById("wifi-app-name");
+  const name=input.value.trim();
+  if(!name){input.focus();return}
+  const apps=readLocal(WIFI_APPS_KEY);
+  if(!apps.some(x=>x.name.toLowerCase()===name.toLowerCase())) apps.push({name,addedAt:new Date().toISOString()});
+  localStorage.setItem(WIFI_APPS_KEY,JSON.stringify(apps));
+  input.value="";renderWifiApps();
+}
+function renderWifiApps(){
+  const el=document.getElementById("wifi-app-list");if(!el)return;
+  const apps=readLocal(WIFI_APPS_KEY);
+  el.innerHTML="";
+  if(!apps.length){el.innerHTML='<p class="muted">Todavía no has añadido aplicaciones.</p>';return}
+  apps.forEach((app,i)=>{
+    const row=document.createElement("div");row.className="item";
+    const label=document.createElement("span");label.textContent=app.name+" ";
+    const remove=document.createElement("button");remove.type="button";remove.textContent="Quitar";remove.onclick=()=>{const a=readLocal(WIFI_APPS_KEY);a.splice(i,1);localStorage.setItem(WIFI_APPS_KEY,JSON.stringify(a));renderWifiApps()};
+    row.append(label,remove);el.appendChild(row);
+  });
+}
+function wifiInfo(type){
+ const messages={
+ devices:"Para inventariar los equipos, conecta el teléfono a tu propia red y utiliza Fing o WiFiman. Esta versión web no ejecuta un escaneo LAN ni afirma detectar dispositivos sin haberlo hecho.",
+ security:"En el panel del router comprueba WPA3 o WPA2-AES, desactiva WPS si no lo necesitas, actualiza el firmware y cambia la contraseña de administración predeterminada.",
+ password:"En Android: Ajustes → Conexiones → Wi-Fi → selecciona tu red → Compartir (puede solicitar desbloqueo). Consulta el QR desde el propio teléfono. NEXUS no extrae ni almacena contraseñas.",
+ history:"Las auditorías registradas en esta versión se guardan localmente en este navegador. Añade una nota de revisión y exporta el informe cuando termines."
+ };
+ const detail=document.getElementById("wifi-detail");detail.textContent=messages[type]||"";
+ const history=readLocal(WIFI_HISTORY_KEY);history.unshift({type,detail:messages[type],date:new Date().toISOString()});localStorage.setItem(WIFI_HISTORY_KEY,JSON.stringify(history.slice(0,50)));renderWifiHistory();
+}
+function renderWifiHistory(){
+ const el=document.getElementById("wifi-history");if(!el)return;
+ const history=readLocal(WIFI_HISTORY_KEY);
+ el.textContent=history.length?history.slice(0,8).map(x=>new Date(x.date).toLocaleString()+" — "+x.type).join("\\n"):"Sin auditorías registradas.";
+}
+function exportWifiReport(){
+ const report={app:"NEXUS AI",module:"Wi-Fi",generatedAt:new Date().toISOString(),notice:"Registro local; no representa un escaneo automático del dispositivo o de la red.",apps:readLocal(WIFI_APPS_KEY),history:readLocal(WIFI_HISTORY_KEY)};
+ const blob=new Blob([JSON.stringify(report,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="nexus-wifi-informe.json";a.click();URL.revokeObjectURL(url);
+}
+function clearWifiHistory(){localStorage.removeItem(WIFI_HISTORY_KEY);renderWifiHistory();document.getElementById("wifi-detail").textContent="Historial local borrado."}
 </script>
 </body>
 </html>

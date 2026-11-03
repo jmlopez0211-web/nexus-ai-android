@@ -1,4 +1,3 @@
-
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from groq import Groq
@@ -7,16 +6,23 @@ app = Flask(__name__, static_folder=".", static_url_path="")
 
 @app.get("/")
 def inicio():
-    return send_from_directory(".", "index.html")
+    # Serve the actual Spanish-named frontend file in this repository.
+    return send_from_directory(".", "índice.html")
 
 @app.get("/api/estado")
+@app.get("/api/health")
 def estado():
+    configured = bool(os.environ.get("GROQ_API_KEY"))
     return jsonify({
         "ok": True,
-        "ia_configurada": bool(os.environ.get("GROQ_API_KEY"))
+        "status": "ok",
+        "app": "NEXUS AI",
+        "ia_configurada": configured,
+        "ai_connected": configured
     })
 
 @app.post("/api/ia")
+@app.post("/api/ask")
 def consultar_ia():
     clave = os.environ.get("GROQ_API_KEY")
     if not clave:
@@ -35,9 +41,9 @@ def consultar_ia():
                 {
                     "role": "system",
                     "content": (
-                        "Eres NEXUS AI, un asistente de inteligencia artificial "
-                        "responsable, útil y orientado a la seguridad defensiva. "
-                        "Responde en español y explica los pasos con claridad."
+                        "Eres NEXUS AI, un asistente responsable, útil y orientado "
+                        "a la seguridad defensiva. Responde en español y explica "
+                        "los pasos con claridad."
                     )
                 },
                 {"role": "user", "content": tarea}
