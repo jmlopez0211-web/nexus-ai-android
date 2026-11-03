@@ -179,6 +179,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        global WIFI_CACHE, WIFI_CACHE_SAVED_AT
         origin = self._origin()
         if self.headers.get("Origin") and not origin:
             return
@@ -210,7 +211,6 @@ class Handler(BaseHTTPRequestHandler):
 
             # Android may temporarily return an empty/partial scan because of
             # Wi-Fi scan throttling. Preserve the last non-empty inventory.
-            global WIFI_CACHE, WIFI_CACHE_SAVED_AT
             now = time.time()
             if networks:
                 WIFI_CACHE = networks
