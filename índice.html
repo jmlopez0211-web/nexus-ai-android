@@ -215,7 +215,7 @@ async function comprobarConexion() {
   const estado = document.getElementById("api-status");
   if (!estado) return;
   try {
-    const respuesta = await fetch("https://nexus-ai-android-3.onrender.com/api/health", {cache:"no-store"});
+    const respuesta = await fetch("/api/health", {cache:"no-store"});
     if (!respuesta.ok) throw new Error("Servidor no disponible");
     const datos = await respuesta.json();
     estado.textContent = datos.ai_configured
@@ -238,7 +238,7 @@ async function askNexus() {
   resultado.textContent = "NEXUS AI está pensando...";
 
   try {
-    const respuesta = await fetch("https://nexus-ai-android-3.onrender.com/api/ask", {
+    const respuesta = await fetch("/api/ask", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
