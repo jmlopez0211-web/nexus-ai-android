@@ -26,6 +26,13 @@ class WifiUiFeatureTests(unittest.TestCase):
         self.assertIn("no se ha contactado con el router", self.html)
         self.assertIn('input.value=""', self.html)
 
+    def test_isolated_wifi_simulator_is_available_and_offline(self):
+        self.assertIn('id="wifi-simulation-lab"', self.html)
+        self.assertIn("function runWifiSimulation()", self.html)
+        self.assertIn("network_used:false", self.html)
+        self.assertIn("credentials_transmitted:false", self.html)
+        self.assertIn("No se ha contactado con ninguna red", self.html)
+
     def test_frontend_documents_safe_scope(self):
         self.assertIn("no se capturan handshakes", self.html.lower())
         self.assertIn("no se realizan ataques de diccionario", self.html.lower())
