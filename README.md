@@ -53,14 +53,14 @@ políticas de origen/red privada del dispositivo.
 ## Auditoría defensiva Wi-Fi
 
 El Centro Wi-Fi incluye un análisis pasivo de los anuncios recibidos por Termux:API:
-- Clasifica las capacidades anunciadas como WPA3, WPA2, WPA heredado o red abierta/sin cifrado anunciado.
+- Clasifica anuncios WPA3, WPA2, modos mixtos, WPA heredado, WEP, redes abiertas explícitas y capacidades desconocidas (que no se confunden con redes abiertas).
 - Señala WPS anunciado y ofrece recomendaciones de configuración.
 - Resume intensidad de señal y frecuencia.
 - Exporta un informe JSON local.
 
-Incluye además una comprobación offline de la fortaleza de una contraseña que el usuario controla. La contraseña se procesa en el navegador, se borra del campo al terminar y no se transmite ni se guarda. Puede compararse con un diccionario .txt elegido por el usuario (máximo 5 MB), procesado localmente y sin subirlo al servidor.
+Incluye además una comprobación offline de la contraseña de una red que el usuario controla. La compara con una pequeña lista integrada de claves habituales y, opcionalmente, con un diccionario .txt elegido por el usuario (máximo 5 MB). Todo se procesa en el navegador: la contraseña se borra del campo al terminar y no se transmite ni se guarda. Es una comparación exacta de texto y una heurística orientativa, no una estimación criptográfica de entropía.
 
-**Límites deliberados:** no captura handshakes, no recupera claves de redes, no ejecuta fuerza bruta ni ataques de diccionario contra puntos de acceso, no intenta autenticarse y no prueba contraseñas contra redes cercanas. El análisis Wi-Fi se basa únicamente en metadatos anunciados y no demuestra que una red sea vulnerable. WPS anunciado es un indicador para revisar, no una vulnerabilidad confirmada.
+**Límites deliberados:** no captura handshakes, no recupera claves de redes, no ejecuta fuerza bruta ni ataques de diccionario contra puntos de acceso, no intenta autenticarse ni lanza intentos de contraseña contra ninguna red. La lista integrada es breve y no exhaustiva; una ausencia de coincidencia no demuestra que la contraseña sea segura. El análisis Wi-Fi se basa únicamente en metadatos anunciados y no demuestra que una red sea vulnerable. WPS anunciado es un indicador para revisar, no una vulnerabilidad confirmada.
 
 ## Estado de Wapiti
 
