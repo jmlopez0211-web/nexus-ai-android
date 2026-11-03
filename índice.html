@@ -193,6 +193,32 @@ footer{border-top:1px solid #18364a;padding-top:16px}
     <button type="button" onclick="clearWifiHistory()">Borrar historial local</button>
   </div>
   <div id="wifi-history" class="muted" style="margin-top:10px"></div>
+
+  <section class="panel" id="wifi-simulation-lab" aria-labelledby="wifi-simulation-title">
+    <h3 id="wifi-simulation-title">Laboratorio aislado: simulación de intentos</h3>
+    <p class="muted">Práctica educativa con un punto de acceso ficticio y claves de prueba. No utiliza Wi-Fi, no se conecta a routers y no transmite credenciales.</p>
+    <label for="sim-lockout">Defensa simulada del router</label>
+    <select id="sim-lockout" style="width:100%;padding:12px;background:#07101c;color:#e9f8ff;border:1px solid #24445b;border-radius:10px;font:inherit">
+      <option value="3">Bloquear tras 3 intentos fallidos</option>
+      <option value="5" selected>Bloquear tras 5 intentos fallidos</option>
+      <option value="0">Sin bloqueo (solo para comparar el riesgo)</option>
+    </select>
+    <label for="sim-password">Clave ficticia del laboratorio</label>
+    <input id="sim-password" type="text" value="Nexus-Lab-2026!" autocomplete="off">
+    <label for="sim-guess-list">Lista de claves ficticias (una por línea)</label>
+    <textarea id="sim-guess-list" rows="5" spellcheck="false">12345678
+password123
+admin123
+Nexus2026
+Nexus-Lab-2026!</textarea>
+    <div class="audit-actions">
+      <button id="run-wifi-simulation" type="button">Ejecutar simulación</button>
+      <button id="reset-wifi-simulation" type="button">Reiniciar laboratorio</button>
+      <button id="export-wifi-simulation" type="button" disabled>Exportar informe</button>
+    </div>
+    <p id="wifi-simulation-status" class="muted" role="status" aria-live="polite">Preparado. Todos los datos son ficticios.</p>
+    <div id="wifi-simulation-results" aria-live="polite"></div>
+  </section>
 </section>
 
 <section id="web-audit" class="panel" style="margin-top:18px" aria-labelledby="web-audit-title">
@@ -259,7 +285,7 @@ async function comprobarConexion() {
     estado.textContent = "IA: no se pudo comprobar la conexión (" + error.message + ").";
   }
 }
-async async function askNexus() {
+async function askNexus() {
   const tarea = document.getElementById("task").value.trim();
   const resultado = document.getElementById("result");
 
@@ -486,35 +512,55 @@ async function scanNexusPorts(){
 <script>
 let latestWirelessAudit = null;
 function classifyWifiSecurity(network) {
-  const caps = String(network.capabilities || "").toUpperCase();
+  const rawCaps = network.capabilities;
+  const caps = String(rawCaps || "").toUpperCase();
   const flags = [];
-  let security = "No identificada";
+  let security = "Cifrado no identificable";
   let severity = "info";
-  if (!caps || caps === "[]" || (!caps.includes("WPA") && !caps.includes("RSN"))) {
-    security = "Red abierta o seguridad no anunciada";
+  const hasMetadata = rawCaps !== undefined && rawCaps !== null && String(rawCaps).trim() !== "";
+  const isExplicitlyOpen = hasMetadata && (caps === "[]" || caps === "[ESS]" || caps === "ESS" || /(^|[\\[\\s])OPEN([\\]\\s]|$)/.test(caps));
+  const hasWep = /WEP/.test(caps);
+  const hasWpa3 = /SAE/.test(caps);
+  const hasWpa2 = /WPA2|RSN/.test(caps);
+  const hasWpa1 = /WPA(?!2|3)|WPA-PSK/.test(caps);
+
+  if (hasWep) {
+    security = "WEP anunciado (obsoleto e inseguro)";
     severity = "high";
-    flags.push("No se anuncia WPA/WPA2/WPA3. Verifica la configuración del punto de acceso.");
-  } else if (caps.includes("SAE")) {
+    flags.push("WEP está obsoleto: cambia el router a WPA2-AES o WPA3.");
+  } else if (hasWpa3 && hasWpa2) {
+    security = "Modo mixto WPA3/WPA2 anunciado";
+    flags.push("El punto de acceso anuncia compatibilidad WPA3 y WPA2; revisa que WPA3 esté habilitado para los dispositivos compatibles.");
+  } else if (hasWpa3) {
     security = "WPA3-Personal anunciado";
-  } else if (caps.includes("WPA2")) {
-    security = "WPA2 anunciado";
-    if (caps.includes("WPA-PSK") && !caps.includes("WPA2")) {
-      security = "WPA/WPA2 anunciado";
-      severity = "medium";
-    }
-  } else if (caps.includes("WPA-PSK") || caps.includes("WPA")) {
-    security = "WPA heredado anunciado";
+  } else if (hasWpa2 && hasWpa1) {
+    security = "Modo mixto WPA/WPA2 anunciado";
     severity = "medium";
-    flags.push("Se anuncia WPA heredado; prioriza WPA2-AES o WPA3 si los dispositivos lo permiten.");
+    flags.push("También se anuncia WPA heredado; si es posible, desactiva la compatibilidad WPA antigua.");
+  } else if (hasWpa2) {
+    security = "WPA2 anunciado";
+  } else if (hasWpa1) {
+    security = "WPA heredado anunciado";
+    severity = "high";
+    flags.push("WPA heredado está obsoleto; prioriza WPA2-AES o WPA3.");
+  } else if (isExplicitlyOpen) {
+    security = "Red abierta (sin cifrado anunciado)";
+    severity = "high";
+    flags.push("La información recibida indica una red abierta. Confirma la configuración en el router antes de concluir.");
+  } else if (!hasMetadata) {
+    flags.push("Android/Termux no proporcionó capacidades de seguridad para esta red; no se puede clasificar como abierta.");
+  } else {
+    flags.push("No se reconoció un protocolo de cifrado en los datos recibidos; verifica el router manualmente.");
   }
+
   if (caps.includes("WPS")) {
     severity = severity === "high" ? severity : "medium";
-    flags.push("WPS está anunciado. Si no lo necesitas, desactívalo en el router.");
+    flags.push("WPS está anunciado. Desactívalo si no lo necesitas; el anuncio no demuestra que sea explotable.");
   }
   if (caps.includes("MFPR")) flags.push("Se anuncia protección obligatoria de tramas de gestión (802.11w).");
   else if (caps.includes("MFPC")) flags.push("Se anuncia compatibilidad con protección de tramas de gestión.");
   const rssi = Number(network.rssi);
-  const signal = Number.isFinite(rssi) ? (rssi >= -60 ? "Fuerte" : rssi >= -75 ? "Media" : "Débil" ) : "No disponible";
+  const signal = Number.isFinite(rssi) ? (rssi >= -60 ? "Fuerte" : rssi >= -75 ? "Media" : "Débil") : "No disponible";
   return {security, severity, flags, signal};
 }
 function runWirelessAudit() {
@@ -524,18 +570,21 @@ function runWirelessAudit() {
     status.textContent = "No hay inventario real cargado. Pulsa primero «Buscar redes reales».";
     return;
   }
-  const findings = nexusWifiInventory.map(n => ({ssid:n.ssid || "(SSID oculto)", bssid:n.bssid || "N/D", rssi:n.rssi ?? null, frequency_mhz:n.frequency_mhz ?? null, capabilities:n.capabilities || "", ...classifyWifiSecurity(n)}));
-  const counts = {open:0,wps:0,legacy:0,wpa3:0};
+  const findings = nexusWifiInventory.map(n => ({ssid:n.ssid || "(SSID oculto)", bssid:n.bssid || "N/D", rssi:n.rssi ?? null, frequency_mhz:n.frequency_mhz ?? null, capabilities:n.capabilities ?? null, ...classifyWifiSecurity(n)}));
+  const counts = {open:0,wps:0,legacy:0,wpa2:0,wpa3:0,mixed:0,unknown:0};
   findings.forEach(f => {
-    if (f.severity === "high") counts.open++;
-    if (String(f.capabilities).toUpperCase().includes("WPS")) counts.wps++;
-    if (f.severity === "medium" && /WPA heredado|WPA\/WPA2/.test(f.security)) counts.legacy++;
+    if (f.security === "Red abierta (sin cifrado anunciado)") counts.open++;
+    if (String(f.capabilities || "").toUpperCase().includes("WPS")) counts.wps++;
+    if (/WEP|WPA heredado/.test(f.security)) counts.legacy++;
+    if (f.security.includes("WPA2")) counts.wpa2++;
     if (f.security.includes("WPA3")) counts.wpa3++;
+    if (f.security.includes("mixto")) counts.mixed++;
+    if (f.security === "Cifrado no identificable") counts.unknown++;
   });
-  latestWirelessAudit = {application:"NEXUS IA",module:"Wi-Fi defensive posture",generated_at:new Date().toISOString(),source:"Termux:API",network_count:findings.length,summary:counts,findings,limitations:["El análisis interpreta capacidades anunciadas por los puntos de acceso; no verifica la configuración interna del router.","WPS anunciado no demuestra que WPS sea explotable.","No se capturan handshakes, no se prueban contraseñas y no se realizan ataques de diccionario ni fuerza bruta."]};
+  latestWirelessAudit = {application:"NEXUS IA",module:"Wi-Fi defensive posture",generated_at:new Date().toISOString(),source:"Termux:API",network_count:findings.length,summary:counts,findings,limitations:["El análisis interpreta capacidades anunciadas por los puntos de acceso; no verifica la configuración interna del router.","Una red sin metadatos de capacidades se clasifica como desconocida, no como abierta.","WPS anunciado no demuestra que WPS sea explotable.","La auditoría no se conecta a puntos de acceso, no prueba credenciales ni realiza ataques."]};
   root.replaceChildren();
   const metrics=document.createElement("div");metrics.className="web-result";
-  [["Redes",findings.length],["Abiertas/sin cifrado anunciado",counts.open],["WPS anunciado",counts.wps],["WPA3 anunciado",counts.wpa3]].forEach(([label,value])=>{const box=document.createElement("div");box.className="metric";const strong=document.createElement("strong");strong.textContent=value;const small=document.createElement("small");small.textContent=label;box.append(strong,small);metrics.append(box);});
+  [["Redes",findings.length],["Abiertas anunciadas",counts.open],["WEP/WPA heredado",counts.legacy],["WPA2",counts.wpa2],["WPA3",counts.wpa3],["WPS anunciado",counts.wps]].forEach(([label,value])=>{const box=document.createElement("div");box.className="metric";const strong=document.createElement("strong");strong.textContent=value;const small=document.createElement("small");small.textContent=label;box.append(strong,small);metrics.append(box);});
   root.append(metrics);
   findings.forEach(f=>{
     const box=document.createElement("article");box.className="finding "+(f.severity==="high"?"medium":f.severity==="medium"?"low":"info");
@@ -544,37 +593,44 @@ function runWirelessAudit() {
     const detail=document.createElement("p");detail.textContent=f.flags.length?f.flags.join(" "):"No se observan indicadores básicos de configuración débil en los datos anunciados.";
     box.append(h,p,detail);root.append(box);
   });
-  const note=document.createElement("p");note.className="muted";note.textContent="Resultado orientativo: los anuncios 802.11 no permiten confirmar vulnerabilidades ni identificar la contraseña de una red.";root.append(note);
+  const note=document.createElement("p");note.className="muted";note.textContent="Resultado orientativo: se interpretan anuncios 802.11, no se confirma la configuración real ni se demuestra que una red sea vulnerable.";root.append(note);
   document.getElementById("export-wireless-audit").disabled=false;
   status.textContent="Análisis completado: "+findings.length+" anuncios de red revisados.";
 }
+const COMMON_WIFI_PASSWORDS = new Set([
+  "12345678","123456789","1234567890","123456789a","123456789abc",
+  "password","password1","password123","admin","admin123","administrator",
+  "qwerty123","qwertyui","abcdefgh","abc12345","11111111","00000000",
+  "87654321","11223344","12341234","12344321","987654321","iloveyou",
+  "welcome1","changeme","default","letmein","internet","wireless",
+  "contraseña","contrasena","123456","1234567","1234567890"
+]);
 async function checkOwnWifiPassphrase() {
   const input=document.getElementById("wifi-own-passphrase");
   const fileInput=document.getElementById("wifi-dictionary-file");
   const output=document.getElementById("wifi-passphrase-result");
   const value=input.value;
   if(!value){output.textContent="Introduce una contraseña propia para evaluarla.";return;}
+  const target=value.normalize("NFKC").trim().toLocaleLowerCase();
   const checks=[];
-  if(value.length<12)checks.push("Usa al menos 12 caracteres; es preferible una frase larga y única.");
-  if(value.length>=16)checks.push("Longitud adecuada (16 o más caracteres).");
+  if(value.length<12)checks.push("Tiene menos de 12 caracteres; utiliza una frase larga, única y aleatoria.");
+  else if(value.length>=16)checks.push("Longitud favorable: 16 caracteres o más.");
   if(/^(.)\1+$/.test(value))checks.push("Evita repetir un único carácter.");
-  if(/password|contraseñ|123456|qwerty|admin|wifi/i.test(value))checks.push("Contiene una secuencia o palabra muy habitual.");
-  if(!/[a-z]/.test(value)||!/[A-Z]/.test(value)||!/[0-9]/.test(value)||!/[^A-Za-z0-9]/.test(value))checks.push("Mezcla varios tipos de caracteres o utiliza una frase aleatoria de varias palabras.");
-  let dictionaryMatch=false;
+  if(/password|contraseñ|123456|qwerty|admin|wifi/i.test(value))checks.push("Contiene una palabra o secuencia habitual.");
+  let dictionaryMatch=COMMON_WIFI_PASSWORDS.has(target);
+  let dictionarySource=dictionaryMatch?"lista integrada de claves habituales":null;
   const file=fileInput.files && fileInput.files[0];
   if(file){
     if(file.size>5*1024*1024){output.textContent="El diccionario supera 5 MB. Selecciona un archivo más pequeño.";return;}
-    const text=await file.text();
-    const target=value.normalize("NFKC").toLocaleLowerCase();
-    dictionaryMatch=text.split(/\r?\n/).some(line=>line.trim().normalize("NFKC").toLocaleLowerCase()===target);
-    if(dictionaryMatch)checks.push("Coincide exactamente con una entrada del diccionario local: cámbiala.");
-    else checks.push("No aparece como coincidencia exacta en el diccionario seleccionado; esto no garantiza que sea resistente.");
-  } else {
-    checks.push("No se ha seleccionado diccionario; solo se han aplicado reglas locales básicas.");
+    const dictionaryText=await file.text();
+    const customMatch=dictionaryText.split(/\r?\n/).some(line=>line.trim().normalize("NFKC").toLocaleLowerCase()===target);
+    if(customMatch){dictionaryMatch=true;dictionarySource="diccionario local seleccionado";}
   }
-  const score=(value.length>=16?2:value.length>=12?1:0)+(/[a-z]/.test(value)&&/[A-Z]/.test(value)?1:0)+(/[0-9]/.test(value)?1:0)+(/[^A-Za-z0-9]/.test(value)?1:0)-(/^(.)\1+$/.test(value)?2:0)-(dictionaryMatch?3:0);
-  const level=dictionaryMatch||value.length<12||score<=1?"Débil":score<=3?"Mejorable":"Buena según reglas básicas";
-  output.textContent="Evaluación: "+level+". "+checks.join(" ");
+  if(dictionaryMatch)checks.push("Coincidencia exacta en "+dictionarySource+". Cambia esa contraseña inmediatamente.");
+  else checks.push(file?"Sin coincidencia exacta en las listas consultadas; no garantiza que sea segura.":"No coincide con la pequeña lista integrada; añade un diccionario propio para una revisión más amplia.");
+  const score=(value.length>=20?3:value.length>=16?2:value.length>=12?1:0)+(/[a-z]/.test(value)&&/[A-Z]/.test(value)?1:0)+(/[0-9]/.test(value)?1:0)+(/[^A-Za-z0-9]/.test(value)?1:0)-(/^(.)\1+$/.test(value)?2:0)-(dictionaryMatch?5:0);
+  const level=dictionaryMatch||value.length<12||score<=1?"Débil":score<=3?"Mejorable":"Favorable según reglas básicas";
+  output.textContent="Evaluación orientativa: "+level+". "+checks.join(" ")+" Comprobación offline: no se ha contactado con el router.";
   input.value="";
 }
 document.getElementById("run-wireless-audit").addEventListener("click",runWirelessAudit);
@@ -584,6 +640,58 @@ document.getElementById("export-wireless-audit").addEventListener("click",()=>{
   const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="nexus-auditoria-wifi.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 document.getElementById("check-own-passphrase").addEventListener("click",checkOwnWifiPassphrase);
+</script>
+
+
+<script>
+/* Simulador completamente local: no contiene llamadas de red ni interfaces Wi-Fi. */
+let latestWifiSimulation = null;
+function resetWifiSimulation(){
+  latestWifiSimulation=null;
+  document.getElementById("wifi-simulation-results").replaceChildren();
+  document.getElementById("wifi-simulation-status").textContent="Laboratorio reiniciado. Todos los datos son ficticios.";
+  document.getElementById("export-wifi-simulation").disabled=true;
+}
+function runWifiSimulation(){
+  const secret=document.getElementById("sim-password").value;
+  const guesses=document.getElementById("sim-guess-list").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const limit=Number(document.getElementById("sim-lockout").value);
+  const status=document.getElementById("wifi-simulation-status");
+  const root=document.getElementById("wifi-simulation-results");
+  if(!secret || !guesses.length){status.textContent="Introduce una clave ficticia y al menos un intento de ejemplo.";return;}
+  let failures=0, locked=false, foundAt=null;
+  const events=[];
+  for(let i=0;i<guesses.length;i++){
+    if(locked){events.push({attempt:i+1,result:"Bloqueado: el router simulado ya no acepta intentos."});continue;}
+    if(guesses[i]===secret){
+      foundAt=i+1;events.push({attempt:i+1,result:"Coincidencia ficticia: clave de laboratorio encontrada."});
+      break;
+    }
+    failures++;
+    events.push({attempt:i+1,result:"Clave ficticia incorrecta."});
+    if(limit>0 && failures>=limit){locked=true;events.push({attempt:i+1,result:"Defensa activada: bloqueo tras "+limit+" fallos."});}
+  }
+  latestWifiSimulation={application:"NEXUS IA",module:"Simulador Wi-Fi aislado",simulated:true,generated_at:new Date().toISOString(),network_used:false,credentials_transmitted:false,lockout_threshold:limit||"desactivado",attempts_processed:events.length,failed_attempts:failures,match_at_attempt:foundAt,locked,events,limitations:["Escenario completamente ficticio ejecutado en el navegador.","No se ha utilizado adaptador Wi-Fi, punto de acceso, router ni conexión de red.","No representa una prueba de seguridad sobre una red real."]};
+  root.replaceChildren();
+  events.forEach(event=>{
+    const row=document.createElement("div");row.className="finding "+(event.result.includes("bloqueo")||event.result.includes("Bloqueado")?"medium":event.result.includes("Coincidencia")?"info":"low");
+    const h=document.createElement("h4");h.textContent="Intento simulado "+event.attempt;
+    const p=document.createElement("p");p.textContent=event.result;row.append(h,p);root.append(row);
+  });
+  const summary=document.createElement("div");summary.className="notice";
+  summary.textContent=foundAt?"La clave ficticia apareció en el intento "+foundAt+".":"No se encontró la clave ficticia en los intentos procesados.";
+  if(locked)summary.textContent+=" El bloqueo simulado detuvo los intentos posteriores.";
+  root.prepend(summary);
+  status.textContent="Simulación terminada: "+events.length+" eventos registrados. No se ha contactado con ninguna red.";
+  document.getElementById("export-wifi-simulation").disabled=false;
+}
+document.getElementById("run-wifi-simulation").addEventListener("click",runWifiSimulation);
+document.getElementById("reset-wifi-simulation").addEventListener("click",resetWifiSimulation);
+document.getElementById("export-wifi-simulation").addEventListener("click",()=>{
+ if(!latestWifiSimulation)return;
+ const blob=new Blob([JSON.stringify(latestWifiSimulation,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="nexus-laboratorio-wifi-simulado.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 </script>
 
 </body>
