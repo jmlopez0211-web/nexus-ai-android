@@ -193,6 +193,32 @@ footer{border-top:1px solid #18364a;padding-top:16px}
     <button type="button" onclick="clearWifiHistory()">Borrar historial local</button>
   </div>
   <div id="wifi-history" class="muted" style="margin-top:10px"></div>
+
+  <section class="panel" id="wifi-simulation-lab" aria-labelledby="wifi-simulation-title">
+    <h3 id="wifi-simulation-title">Laboratorio aislado: simulación de intentos</h3>
+    <p class="muted">Práctica educativa con un punto de acceso ficticio y claves de prueba. No utiliza Wi-Fi, no se conecta a routers y no transmite credenciales.</p>
+    <label for="sim-lockout">Defensa simulada del router</label>
+    <select id="sim-lockout" style="width:100%;padding:12px;background:#07101c;color:#e9f8ff;border:1px solid #24445b;border-radius:10px;font:inherit">
+      <option value="3">Bloquear tras 3 intentos fallidos</option>
+      <option value="5" selected>Bloquear tras 5 intentos fallidos</option>
+      <option value="0">Sin bloqueo (solo para comparar el riesgo)</option>
+    </select>
+    <label for="sim-password">Clave ficticia del laboratorio</label>
+    <input id="sim-password" type="text" value="Nexus-Lab-2026!" autocomplete="off">
+    <label for="sim-guess-list">Lista de claves ficticias (una por línea)</label>
+    <textarea id="sim-guess-list" rows="5" spellcheck="false">12345678
+password123
+admin123
+Nexus2026
+Nexus-Lab-2026!</textarea>
+    <div class="audit-actions">
+      <button id="run-wifi-simulation" type="button">Ejecutar simulación</button>
+      <button id="reset-wifi-simulation" type="button">Reiniciar laboratorio</button>
+      <button id="export-wifi-simulation" type="button" disabled>Exportar informe</button>
+    </div>
+    <p id="wifi-simulation-status" class="muted" role="status" aria-live="polite">Preparado. Todos los datos son ficticios.</p>
+    <div id="wifi-simulation-results" aria-live="polite"></div>
+  </section>
 </section>
 
 <section id="web-audit" class="panel" style="margin-top:18px" aria-labelledby="web-audit-title">
@@ -614,6 +640,58 @@ document.getElementById("export-wireless-audit").addEventListener("click",()=>{
   const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="nexus-auditoria-wifi.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 document.getElementById("check-own-passphrase").addEventListener("click",checkOwnWifiPassphrase);
+</script>
+
+
+<script>
+/* Simulador completamente local: no contiene llamadas de red ni interfaces Wi-Fi. */
+let latestWifiSimulation = null;
+function resetWifiSimulation(){
+  latestWifiSimulation=null;
+  document.getElementById("wifi-simulation-results").replaceChildren();
+  document.getElementById("wifi-simulation-status").textContent="Laboratorio reiniciado. Todos los datos son ficticios.";
+  document.getElementById("export-wifi-simulation").disabled=true;
+}
+function runWifiSimulation(){
+  const secret=document.getElementById("sim-password").value;
+  const guesses=document.getElementById("sim-guess-list").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const limit=Number(document.getElementById("sim-lockout").value);
+  const status=document.getElementById("wifi-simulation-status");
+  const root=document.getElementById("wifi-simulation-results");
+  if(!secret || !guesses.length){status.textContent="Introduce una clave ficticia y al menos un intento de ejemplo.";return;}
+  let failures=0, locked=false, foundAt=null;
+  const events=[];
+  for(let i=0;i<guesses.length;i++){
+    if(locked){events.push({attempt:i+1,result:"Bloqueado: el router simulado ya no acepta intentos."});continue;}
+    if(guesses[i]===secret){
+      foundAt=i+1;events.push({attempt:i+1,result:"Coincidencia ficticia: clave de laboratorio encontrada."});
+      break;
+    }
+    failures++;
+    events.push({attempt:i+1,result:"Clave ficticia incorrecta."});
+    if(limit>0 && failures>=limit){locked=true;events.push({attempt:i+1,result:"Defensa activada: bloqueo tras "+limit+" fallos."});}
+  }
+  latestWifiSimulation={application:"NEXUS IA",module:"Simulador Wi-Fi aislado",simulated:true,generated_at:new Date().toISOString(),network_used:false,credentials_transmitted:false,lockout_threshold:limit||"desactivado",attempts_processed:events.length,failed_attempts:failures,match_at_attempt:foundAt,locked,events,limitations:["Escenario completamente ficticio ejecutado en el navegador.","No se ha utilizado adaptador Wi-Fi, punto de acceso, router ni conexión de red.","No representa una prueba de seguridad sobre una red real."]};
+  root.replaceChildren();
+  events.forEach(event=>{
+    const row=document.createElement("div");row.className="finding "+(event.result.includes("bloqueo")||event.result.includes("Bloqueado")?"medium":event.result.includes("Coincidencia")?"info":"low");
+    const h=document.createElement("h4");h.textContent="Intento simulado "+event.attempt;
+    const p=document.createElement("p");p.textContent=event.result;row.append(h,p);root.append(row);
+  });
+  const summary=document.createElement("div");summary.className="notice";
+  summary.textContent=foundAt?"La clave ficticia apareció en el intento "+foundAt+".":"No se encontró la clave ficticia en los intentos procesados.";
+  if(locked)summary.textContent+=" El bloqueo simulado detuvo los intentos posteriores.";
+  root.prepend(summary);
+  status.textContent="Simulación terminada: "+events.length+" eventos registrados. No se ha contactado con ninguna red.";
+  document.getElementById("export-wifi-simulation").disabled=false;
+}
+document.getElementById("run-wifi-simulation").addEventListener("click",runWifiSimulation);
+document.getElementById("reset-wifi-simulation").addEventListener("click",resetWifiSimulation);
+document.getElementById("export-wifi-simulation").addEventListener("click",()=>{
+ if(!latestWifiSimulation)return;
+ const blob=new Blob([JSON.stringify(latestWifiSimulation,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="nexus-laboratorio-wifi-simulado.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 </script>
 
 </body>
