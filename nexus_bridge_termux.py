@@ -36,8 +36,13 @@ def validate_lan_target(value):
         address = ipaddress.ip_address(str(value).strip())
     except ValueError as exc:
         raise ValueError("Introduce una dirección IP local válida; no se admiten nombres de dominio.") from exc
-    if address.version != 4 or not address.is_private or address.is_loopback or address.is_link_local or address.is_multicast or address.is_unspecified or address.is_reserved:
-        raise ValueError("Solo se permiten direcciones IPv4 privadas de tu red local.")
+    private_lan_ranges = (
+        ipaddress.ip_network("10.0.0.0/8"),
+        ipaddress.ip_network("172.16.0.0/12"),
+        ipaddress.ip_network("192.168.0.0/16"),
+    )
+    if address.version != 4 or not any(address in network for network in private_lan_ranges):
+        raise ValueError("Solo se permiten direcciones IPv4 RFC1918 de tu red local.")
     return str(address)
 
 
