@@ -31,6 +31,21 @@ class AuditEngineTests(unittest.TestCase):
         self.assertIn("BANNER", codes)
         self.assertGreater(result["summary"]["total"], 0)
 
+
+    def test_cookie_value_cannot_fake_secure_attribute(self):
+        response = Mock()
+        response.headers = {"Content-Security-Policy": "default-src 'self'",
+                            "Strict-Transport-Security": "max-age=31536000",
+                            "X-Frame-Options": "DENY",
+                            "X-Content-Type-Options": "nosniff",
+                            "Referrer-Policy": "no-referrer",
+                            "Permissions-Policy": "camera=()"}
+        response.status_code = 200
+        response.raw.headers.getlist.return_value = ["session=insecure; Path=/; HttpOnly; SameSite=Lax"]
+        result = inspect_response(response, "https://example.com/")
+        codes = {item["code"] for item in result["findings"]}
+        self.assertIn("COOKIE_SECURE", codes)
+
     def test_cookie_flags(self):
         response = Mock()
         response.headers = {"Content-Security-Policy": "default-src 'self'",
