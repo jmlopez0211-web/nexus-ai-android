@@ -49,6 +49,13 @@ class WifiUiFeatureTests(unittest.TestCase):
         self.assertIn("SSID repetidos", self.html)
         self.assertIn("no permite calcular distancia fiable", self.html)
 
+    def test_accessible_light_dark_theme_toggle(self):
+        self.assertIn('id="theme-toggle"', self.html)
+        self.assertIn('body[data-theme="light"]', self.html)
+        self.assertIn("nexus_ui_theme_v1", self.html)
+        self.assertIn("aria-pressed", self.html)
+        self.assertIn("prefers-reduced-motion:reduce", self.html)
+
     def test_frontend_documents_safe_scope(self):
         self.assertIn("no se capturan handshakes", self.html.lower())
         self.assertIn("no se realizan ataques de diccionario", self.html.lower())
