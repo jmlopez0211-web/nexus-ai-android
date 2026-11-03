@@ -33,6 +33,12 @@ class WifiUiFeatureTests(unittest.TestCase):
         self.assertIn("credentials_transmitted:false", self.html)
         self.assertIn("No se ha contactado con ninguna red", self.html)
 
+    def test_compact_mobile_layout_and_engine_diagnostics(self):
+        self.assertIn("Compactación móvil", self.html)
+        self.assertIn('id="wifi-engines"', self.html)
+        self.assertIn("checkWifiEngines()", self.html)
+        self.assertIn('fetch(base+"/api/tools"', self.html)
+
     def test_frontend_documents_safe_scope(self):
         self.assertIn("no se capturan handshakes", self.html.lower())
         self.assertIn("no se realizan ataques de diccionario", self.html.lower())
