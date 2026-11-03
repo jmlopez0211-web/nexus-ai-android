@@ -400,12 +400,12 @@ const nexusWifiTokenField = document.getElementById("nexus-wifi-token");
 if(nexusWifiTokenField) nexusWifiTokenField.value = sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY) || "";
 function getWifiBridgeUrl(){
   const field=document.getElementById("nexus-wifi-bridge");
-  return (field.value.trim()||"http://127.0.0.1:8766").replace(/\\/+$/,"");
+  return (field.value.trim()||"http://127.0.0.1:8766").replace(/\/+$/,"");
 }
 document.getElementById("save-wifi-bridge").addEventListener("click",()=>{
   const value=getWifiBridgeUrl();
   const token=document.getElementById("nexus-wifi-token").value.trim();
-  if(!/^https?:\\/\\//i.test(value)){document.getElementById("nexus-wifi-status").textContent="La dirección debe comenzar por http:// o https://.";return;}
+  if(!/^https?:\/\//i.test(value)){document.getElementById("nexus-wifi-status").textContent="La dirección debe comenzar por http:// o https://.";return;}
   if(!token){document.getElementById("nexus-wifi-status").textContent="Introduce el token local antes de guardar la conexión.";return;}
   localStorage.setItem(WIFI_BRIDGE_URL_KEY,value);
   sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token);
