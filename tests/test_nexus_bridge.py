@@ -16,6 +16,11 @@ class NexusBridgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_lan_target("router.local")
 
+
+    def test_rejects_documentation_network(self):
+        with self.assertRaises(ValueError):
+            validate_lan_target("192.0.2.10")
+
     def test_rejects_loopback(self):
         with self.assertRaises(ValueError):
             validate_lan_target("127.0.0.1")
