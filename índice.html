@@ -254,11 +254,11 @@ const WIFI_BRIDGE_URL_KEY = "nexus_wifi_bridge_url";
 let nexusWifiInventory = null;
 function getWifiBridgeUrl(){
   const field=document.getElementById("nexus-wifi-bridge");
-  return (field.value.trim()||"http://127.0.0.1:8765").replace(/\\/+$/,"");
+  return (field.value.trim()||"http://127.0.0.1:8765").replace(/\/+$/,"");
 }
 document.getElementById("save-wifi-bridge").addEventListener("click",()=>{
   const value=getWifiBridgeUrl();
-  if(!/^https?:\\/\\//i.test(value)){document.getElementById("nexus-wifi-status").textContent="La dirección debe comenzar por http:// o https://.";return;}
+  if(!/^https?:\/\//i.test(value)){document.getElementById("nexus-wifi-status").textContent="La dirección debe comenzar por http:// o https://.";return;}
   localStorage.setItem(WIFI_BRIDGE_URL_KEY,value);
   document.getElementById("nexus-wifi-status").textContent="Dirección guardada en este navegador.";
 });
