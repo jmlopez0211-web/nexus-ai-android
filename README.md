@@ -5,7 +5,7 @@ Panel web de asistencia y diagnóstico defensivo. Diseñado para navegador móvi
 ## Funciones disponibles
 
 - Asistente IA mediante Groq (requiere `GROQ_API_KEY` en el entorno del servidor).
-- Centro Wi-Fi que consulta el puente local Termux:API del teléfono en `127.0.0.1:8765`.
+- Centro Wi-Fi que consulta el puente local Termux:API del teléfono en `127.0.0.1:8766`.
 - Auditoría HTTP básica de una única URL pública autorizada:
   - Estado HTTP y cadena de redirecciones limitada.
   - Cabeceras CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy y Permissions-Policy.
@@ -27,6 +27,7 @@ Introduce `http://127.0.0.1:8766` y ese token en el Centro Wi-Fi de NEXUS. No pu
 ese puerto. El puente ofrece:
 
 - `GET /api/status`: estado del puente.
+- `GET /api/tooling`: inventario de solo lectura del motor Python, herramientas inalámbricas detectadas y capacidades visibles del entorno.
 - `GET /api/wifi`: lectura de redes cercanas mediante Termux:API, si está instalada y autorizada.
 - `POST /api/scan`: inventario TCP de un único IPv4 privado autorizado, limitado a 20 puertos habituales.
 
@@ -35,6 +36,19 @@ El nombre del servicio se infiere del puerto; un puerto abierto no demuestra por
 El puente valida la IP privada, requiere el token y confirmación de autorización, aplica una lista CORS
 limitada y solo escucha en loopback. Si el navegador bloquea el acceso HTTPS a localhost por sus políticas
 de red privada, el panel indicará el error; no se debe exponer el puente a Internet como solución.
+
+## Motor Python independiente
+
+El módulo `nexus_wireless_engine.py` funciona separado de la interfaz y usa la biblioteca estándar de Python. El panel consulta el endpoint autenticado `GET /api/tooling` del puente local y permite exportar el diagnóstico JSON.
+
+El catálogo incluye Wacker, hostapd-mana, Wifite2 y EAPHammer. La comprobación únicamente busca sus ejecutables en el PATH: no los instala ni los ejecuta. El informe muestra la versión de Python, arquitectura, disponibilidad de Termux:API e interfaces Wi-Fi visibles. La visibilidad de una interfaz no demuestra compatibilidad con modo monitor ni inyección de paquetes; esos campos permanecen sin verificar.
+
+Este módulo no inicia puntos de acceso, no suplanta redes, no captura credenciales o autenticaciones y no realiza intentos de contraseña. Para revisar el funcionamiento:
+
+```bash
+python -m unittest discover -s tests -v
+python -c "from nexus_wireless_engine import inventory_tools; print(inventory_tools())"
+```
 
 ## Auditoría web: alcance y límites
 

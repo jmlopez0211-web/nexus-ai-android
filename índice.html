@@ -184,6 +184,14 @@ footer{color:#62798a;border-color:#d7e4ed}
     <p id="local-scan-status" class="muted" role="status" aria-live="polite">Sin escaneo local.</p>
     <div id="local-scan-results"></div>
   </div>
+  <section class="panel" id="nexus-python-engine" aria-labelledby="nexus-python-engine-title">
+    <h3 id="nexus-python-engine-title">Motor Python independiente · Inventario de herramientas</h3>
+    <p class="muted">Comprueba desde Termux qué utilidades están presentes y qué capacidades de hardware expone Android. Esta consulta es de solo lectura: no instala ni ejecuta herramientas de auditoría inalámbrica.</p>
+    <div class="notice"><strong>Catálogo de laboratorio autorizado</strong><br>Wacker · hostapd-mana · Wifite2 · EAPHammer. Se muestran únicamente como inventario y documentación. No se habilitan captura de credenciales, puntos de acceso fraudulentos, intentos de contraseña ni ataques automáticos.</div>
+    <div class="audit-actions"><button id="check-python-engine" type="button">Comprobar motor Python</button><button id="export-python-engine" type="button" disabled>Exportar diagnóstico</button></div>
+    <p id="python-engine-status" class="muted" role="status" aria-live="polite">Sin comprobación todavía.</p>
+    <div id="python-engine-results" aria-live="polite"></div>
+  </section>
   <div id="wifi-networks" aria-live="polite"></div>
 
   <section class="panel" id="wireless-audit-panel" aria-labelledby="wireless-audit-title">
@@ -491,6 +499,39 @@ async function scanNexusWifi(){
     const message=error.name==="TimeoutError"?"El puente tardó más de 18 segundos en responder.":error.message;
     status.textContent="No se pudo consultar el puente local: "+message+". Comprueba que Termux siga ejecutando nexus_bridge_termux.py, el token y los permisos de Android.";
   }finally{button.disabled=false;button.textContent="Buscar redes reales";}
+}
+</script>
+
+
+
+
+
+<script>
+let latestPythonEngineReport=null;
+document.getElementById("check-python-engine").addEventListener("click",checkPythonEngine);
+document.getElementById("export-python-engine").addEventListener("click",()=>{
+ if(!latestPythonEngineReport)return;
+ const blob=new Blob([JSON.stringify(latestPythonEngineReport,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="nexus-python-engine-inventory.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+async function checkPythonEngine(){
+ const button=document.getElementById("check-python-engine"),status=document.getElementById("python-engine-status"),root=document.getElementById("python-engine-results");
+ button.disabled=true;button.textContent="Comprobando…";status.textContent="Consultando el motor Python local…";root.replaceChildren();
+ try{
+  const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+  if(!token)throw new Error("Introduce el token local y guarda la conexión.");
+  const response=await fetch(getWifiBridgeUrl()+"/api/tooling",{headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:AbortSignal.timeout(12000)});
+  const data=await response.json();
+  if(!response.ok||data.ok!==true||!Array.isArray(data.tools))throw new Error(data.error||("Respuesta HTTP "+response.status));
+  latestPythonEngineReport={...data,generated_at:new Date().toISOString()};
+  const env=data.environment||{},summary=document.createElement("p");summary.className="muted";
+  summary.textContent="Python "+(env.python_version||"N/D")+" · Arquitectura "+(env.machine||"N/D")+" · Termux:API "+(env.termux_api_cli?"disponible":"no detectada")+" · Interfaces Wi-Fi visibles: "+((env.wireless_interfaces_visible||[]).join(", ")||"ninguna");root.append(summary);
+  data.tools.forEach(item=>{const card=document.createElement("article");card.className="finding";const title=document.createElement("h4");title.textContent=item.name+" · "+item.status;const desc=document.createElement("p");desc.textContent=item.purpose+" Riesgo operativo: "+item.risk+". Ejecución desde NEXUS: "+item.execution+".";card.append(title,desc);root.append(card);});
+  const note=document.createElement("p");note.className="muted";note.textContent=env.hardware_note||"Modo monitor e inyección no comprobados.";root.append(note);
+  status.textContent="Inventario completado. "+data.tools.filter(x=>x.detected).length+" de "+data.tools.length+" herramientas detectadas. Ninguna se ha ejecutado.";
+  document.getElementById("export-python-engine").disabled=false;
+ }catch(error){status.textContent="No se pudo consultar el motor Python: "+error.message;}
+ finally{button.disabled=false;button.textContent="Comprobar motor Python";}
 }
 </script>
 
