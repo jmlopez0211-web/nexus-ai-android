@@ -1,4 +1,4 @@
-Flask
-groq
-requests
-gunicorn
+Flask>=3.0,<4
+groq>=0.11,<2
+requests>=2.32,<3
+gunicorn>=22,<24
