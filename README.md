@@ -11,7 +11,7 @@ Panel web de asistencia y diagnóstico defensivo. Diseñado para navegador móvi
   - Cabeceras CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy y Permissions-Policy.
   - Atributos Secure, HttpOnly y SameSite de cookies Set-Cookie.
   - Exportación JSON e historial local del navegador.
-- Interfaz adaptable, accesible y con ilustración SVG original integrada.
+- Interfaz adaptable, accesible y con ilustración SVG original integrada. Incluye tema claro/oscuro con preferencia persistente, controles accesibles y respeto por la preferencia de movimiento reducido.
 
 ## Puente local Android/Termux
 
@@ -80,6 +80,10 @@ no está integrado**. Los módulos dependen de todo el paquete `wapitiCore`, dat
 dependencias. Antes de incorporarlo hay que integrar la distribución completa, fijar versión,
 revisar compatibilidad y cumplir GPLv2. Los módulos de fuerza bruta de formularios quedan excluidos.
 No se debe presentar Wapiti como instalado ni operativo en esta versión.
+
+## Interfaz
+
+El panel ofrece tema oscuro y tema claro, con cambio manual y preferencia guardada localmente en el navegador. Los controles principales conservan etiquetas accesibles y se respeta `prefers-reduced-motion`.
 
 ## Desarrollo local
 
