@@ -62,6 +62,10 @@ Incluye además una comprobación offline de la contraseña de una red que el us
 
 **Límites deliberados:** no captura handshakes, no recupera claves de redes, no ejecuta fuerza bruta ni ataques de diccionario contra puntos de acceso, no intenta autenticarse ni lanza intentos de contraseña contra ninguna red. La lista integrada es breve y no exhaustiva; una ausencia de coincidencia no demuestra que la contraseña sea segura. El análisis Wi-Fi se basa únicamente en metadatos anunciados y no demuestra que una red sea vulnerable. WPS anunciado es un indicador para revisar, no una vulnerabilidad confirmada.
 
+### Laboratorio Wi-Fi simulado
+
+El panel incluye un simulador local de intentos con una clave ficticia y una lista de ejemplos editable. Permite observar el efecto de un bloqueo tras varios fallos y exportar un informe marcado como simulado. El procesamiento ocurre íntegramente en el navegador: no utiliza el adaptador Wi-Fi, no contacta con un punto de acceso, no transmite credenciales y no demuestra la seguridad de un router real.
+
 ## Estado de Wapiti
 
 Los archivos fuente Wapiti recibidos se han inspeccionado, pero **el motor Wapiti completo todavía
