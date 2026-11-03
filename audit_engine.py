@@ -106,16 +106,20 @@ def inspect_response(response, url):
     cookie_count = 0
     for cookie in _set_cookie_headers(response):
         cookie_count += 1
-        lower = cookie.lower()
-        if "secure" not in lower:
+        attributes = {
+            part.strip().split("=", 1)[0].lower()
+            for part in cookie.split(";")[1:]
+            if part.strip()
+        }
+        if "secure" not in attributes:
             findings.append(_finding("COOKIE_SECURE", "Cookie sin atributo Secure", "medium",
                                      "Una cookie de respuesta no declara Secure.",
                                      "Añade Secure a las cookies transmitidas exclusivamente por HTTPS."))
-        if "httponly" not in lower:
+        if "httponly" not in attributes:
             findings.append(_finding("COOKIE_HTTPONLY", "Cookie sin atributo HttpOnly", "low",
                                      "Una cookie de respuesta no declara HttpOnly.",
                                      "Añade HttpOnly cuando JavaScript no necesite leer la cookie."))
-        if "samesite" not in lower:
+        if "samesite" not in attributes:
             findings.append(_finding("COOKIE_SAMESITE", "Cookie sin atributo SameSite", "low",
                                      "Una cookie de respuesta no declara SameSite.",
                                      "Define SameSite=Lax o Strict según el flujo de autenticación."))
