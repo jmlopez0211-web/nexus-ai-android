@@ -118,6 +118,14 @@ const tools = {
 };
 
 function tool(name) {
+  if (name === "wifi") {
+    const panel = document.getElementById("wifi-center");
+    panel.hidden = false;
+    panel.scrollIntoView({behavior:"smooth", block:"start"});
+    renderWifiApps();
+    renderWifiHistory();
+    return;
+  }
   document.getElementById("result").textContent =
     tools[name] || "Herramienta no disponible.";
 }
