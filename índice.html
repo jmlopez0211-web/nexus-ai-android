@@ -112,6 +112,46 @@ footer{border-top:1px solid #18364a;padding-top:16px}
  .audit-actions button{min-width:0}
 }
 
+
+
+/* Tema claro accesible y persistente, sin alterar la estructura de los paneles. */
+.header-actions{position:relative;z-index:3;margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.theme-toggle{font-size:12px;padding:8px 11px;white-space:nowrap}
+body[data-theme="light"]{
+ color-scheme:light;
+ --bg:#f3f7fb;--panel:#ffffff;--line:#d7e2ec;--neon:#087e68;--blue:#1769aa;--purple:#6941a5;--muted:#526579;
+ background:linear-gradient(145deg,#f7fbff,#eaf2f8 55%,#f5f8fc);
+ color:#142536;
+}
+body[data-theme="light"] header{background:linear-gradient(115deg,#ffffff,#e8f5f4 65%,#e6f0fb);border-color:#c9dce5;box-shadow:0 12px 34px #29445a18}
+body[data-theme="light"] header small{color:#526a7c}
+body[data-theme="light"] .logo{background:#e1f5ef;color:#087e68;border-color:#087e68}
+body[data-theme="light"] .panel{background:#fff;border-color:#d4e0e9;box-shadow:0 5px 18px #24435a0d}
+body[data-theme="light"] textarea,
+body[data-theme="light"] input,
+body[data-theme="light"] select{background:#f8fbfd;color:#142536;border-color:#b9cad8}
+body[data-theme="light"] button{background:#e8f4f2;color:#075d52;border-color:#8abbb0}
+body[data-theme="light"] button:hover{background:#d9efea;border-color:#087e68}
+body[data-theme="light"] .primary{background:linear-gradient(90deg,#087e68,#267cb4);color:#fff}
+body[data-theme="light"] .tile,
+body[data-theme="light"] .metric,
+body[data-theme="light"] .finding,
+body[data-theme="light"] .wifi-network{background:#f7fafc;border-color:#d5e1e9;color:#172b3c}
+body[data-theme="light"] .notice{background:#edf7f5;color:#183b38;border-left-color:#087e68}
+body[data-theme="light"] .wifi-tools a,
+body[data-theme="light"] .wifi-tools button{background:#f6fafb;color:#183347;border-color:#c8d9e3}
+body[data-theme="light"] .pill{color:#31576d;border-color:#b8cedb}
+body[data-theme="light"] footer{border-color:#d5e0e8}
+body[data-theme="light"] .wifi-warning{color:#925300}
+body[data-theme="light"] .status{color:#087e68}
+@media(max-width:650px){
+ .header-actions{gap:6px}
+ .theme-toggle{font-size:11px;padding:7px 9px}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+
 </style>
 </head>
 <body>
@@ -119,7 +159,7 @@ footer{border-top:1px solid #18364a;padding-top:16px}
 <header>
 <div class="logo" aria-hidden="true">N</div>
 <div style="position:relative;z-index:2"><h1>NEXUS AI</h1><small>DEFENSIVE INTELLIGENCE · SECURITY LAB</small><p class="kicker">SYSTEM ONLINE / ANALYSIS MODE</p></div>
-<div class="status" id="header-status">● COMPROBANDO API</div>
+<div class="header-actions"><button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Cambiar a tema claro">☀️ Tema claro</button><div class="status" id="header-status">● COMPROBANDO API</div></div>
 <svg class="hero-art" viewBox="0 0 340 190" role="img" aria-label="Ilustración original de analista de ciberseguridad con capucha y pantallas de diagnóstico">
 <defs><linearGradient id="hood" x1="0" x2="1"><stop stop-color="#1c6471"/><stop offset="1" stop-color="#14233f"/></linearGradient><linearGradient id="screen" x1="0" x2="1"><stop stop-color="#35f2c2"/><stop offset="1" stop-color="#4ca6ff"/></linearGradient></defs>
 <g fill="none" stroke="#1b6070" opacity=".55"><path d="M10 34h92v48H10zM245 20h80v58h-80zM22 130h80v30H22z"/><path d="M18 47h50m-50 9h68m-68 9h39M253 34h52m-52 9h42m-42 9h57"/></g>
@@ -823,5 +863,28 @@ async function checkWifiEngines(){
 document.getElementById("check-wifi-engines").addEventListener("click",checkWifiEngines);
 </script>
 
+
+<script>
+(function initNexusTheme(){
+ const key="nexus_ui_theme_v1";
+ const button=document.getElementById("theme-toggle");
+ function apply(theme){
+   const light=theme==="light";
+   document.body.dataset.theme=light?"light":"dark";
+   button.textContent=light?"🌙 Tema oscuro":"☀️ Tema claro";
+   button.setAttribute("aria-pressed",String(light));
+   button.setAttribute("aria-label",light?"Cambiar a tema oscuro":"Cambiar a tema claro");
+   document.querySelector('meta[name="theme-color"]')?.setAttribute("content",light?"#f3f7fb":"#050912");
+ }
+ let saved="dark";
+ try{saved=localStorage.getItem(key)||"dark";}catch(_){}
+ apply(saved);
+ button.addEventListener("click",()=>{
+   const next=document.body.dataset.theme==="light"?"dark":"light";
+   apply(next);
+   try{localStorage.setItem(key,next);}catch(_){}
+ });
+})();
+</script>
 </body>
 </html>
