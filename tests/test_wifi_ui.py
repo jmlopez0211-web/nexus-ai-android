@@ -39,6 +39,16 @@ class WifiUiFeatureTests(unittest.TestCase):
         self.assertIn("checkWifiEngines()", self.html)
         self.assertIn('fetch(base+"/api/tools"', self.html)
 
+    def test_radio_intelligence_module_is_available(self):
+        self.assertIn('id="wifi-radio-intelligence"', self.html)
+        self.assertIn("function wifiRadioDetails(network)", self.html)
+        self.assertIn("function analyzeRadioIntelligence()", self.html)
+        self.assertIn('band="2,4 GHz"', self.html)
+        self.assertIn('band="5 GHz"', self.html)
+        self.assertIn('band="6 GHz"', self.html)
+        self.assertIn("SSID repetidos", self.html)
+        self.assertIn("no permite calcular distancia fiable", self.html)
+
     def test_frontend_documents_safe_scope(self):
         self.assertIn("no se capturan handshakes", self.html.lower())
         self.assertIn("no se realizan ataques de diccionario", self.html.lower())
