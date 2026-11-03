@@ -17,7 +17,7 @@ TOKEN = os.environ.get("NEXUS_BRIDGE_TOKEN") or secrets.token_urlsafe(24)
 ALLOWED_ORIGINS = {
     item.strip() for item in os.environ.get(
         "NEXUS_ALLOWED_ORIGINS",
-        "https://nexus-ai-android-3.onrender.com,http://127.0.0.1:8081,http://localhost:8081"
+        "https://nexus-ai-android-3.onrender.com,https://nexus-ai-android.onrender.com,http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:8081,http://localhost:8081"
     ).split(",") if item.strip()
 }
 PORTS = {
