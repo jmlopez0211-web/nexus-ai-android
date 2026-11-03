@@ -131,6 +131,21 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/api/status":
             return self._reply(200, {"ok": True, "service": "NEXUS IA local bridge", "host": HOST, "port": PORT, "wifi_api": bool(shutil.which("termux-wifi-scaninfo"))}, origin)
+        if path == "/api/tools":
+            binaries = {
+                "aircrack-ng": shutil.which("aircrack-ng"),
+                "airmon-ng": shutil.which("airmon-ng"),
+                "airodump-ng": shutil.which("airodump-ng"),
+                "iw": shutil.which("iw"),
+                "termux-wifi-scaninfo": shutil.which("termux-wifi-scaninfo")
+            }
+            return self._reply(200, {
+                "ok": True,
+                "platform": "Android/Termux",
+                "tools": {name: {"installed": bool(path), "path": path} for name, path in binaries.items()},
+                "aircrack_mode": "availability_only",
+                "note": "NEXUS comprueba la presencia de Aircrack-ng; no captura handshakes, no cambia interfaces a modo monitor y no ejecuta ataques ni pruebas de claves contra puntos de acceso."
+            }, origin)
         if path != "/api/wifi":
             return self._reply(404, {"ok": False, "error": "Ruta no encontrada"}, origin)
         command = shutil.which("termux-wifi-scaninfo")
