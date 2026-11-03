@@ -173,6 +173,7 @@ footer{color:#62798a;border-color:#d7e4ed}
   <section class="panel" id="wireless-audit-panel" aria-labelledby="wireless-audit-title">
     <h3 id="wireless-audit-title">Auditoría defensiva de seguridad Wi-Fi</h3>
     <p class="muted">Analiza los anuncios de seguridad de las redes detectadas y revisa la fortaleza de una contraseña propia sin transmitirla ni guardarla.</p>
+    <p class="muted">Alcance profesional: no se capturan handshakes, no se recuperan claves de redes, no se realizan ataques de diccionario ni fuerza bruta y no se intenta acceder a puntos de acceso.</p>
     <div class="audit-actions">
       <button id="run-wireless-audit" type="button">Analizar redes detectadas</button>
       <button id="export-wireless-audit" type="button" disabled>Exportar informe Wi-Fi</button>
@@ -560,7 +561,7 @@ function classifyWifiSecurity(network) {
   let security = "Cifrado no identificable";
   let severity = "info";
   const hasMetadata = rawCaps !== undefined && rawCaps !== null && String(rawCaps).trim() !== "";
-  const isExplicitlyOpen = hasMetadata && (caps === "[]" || caps === "[ESS]" || caps === "ESS" || /(^|[\\[\\s])OPEN([\\]\\s]|$)/.test(caps));
+  const isExplicitlyOpen = hasMetadata && (caps === "[]" || caps === "[ESS]" || caps === "ESS" || caps.includes("OPEN"));
   const hasWep = /WEP/.test(caps);
   const hasWpa3 = /SAE/.test(caps);
   const hasWpa2 = /WPA2|RSN/.test(caps);
