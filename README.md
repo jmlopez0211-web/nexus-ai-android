@@ -5,7 +5,7 @@ Panel web de asistencia y diagnóstico defensivo. Diseñado para navegador móvi
 ## Funciones disponibles
 
 - Asistente IA mediante Groq (requiere `GROQ_API_KEY` en el entorno del servidor).
-- Centro Wi-Fi que consulta el puente local Termux:API del teléfono en `127.0.0.1:8765`.
+- Centro Wi-Fi que consulta el puente local Termux:API del teléfono en `127.0.0.1:8766`.
 - Auditoría HTTP básica de una única URL pública autorizada:
   - Estado HTTP y cadena de redirecciones limitada.
   - Cabeceras CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy y Permissions-Policy.
@@ -27,6 +27,7 @@ Introduce `http://127.0.0.1:8766` y ese token en el Centro Wi-Fi de NEXUS. No pu
 ese puerto. El puente ofrece:
 
 - `GET /api/status`: estado del puente.
+- `GET /api/tools`: disponibilidad de Aircrack-ng, airmon-ng, airodump-ng, iw y Termux:API. Solo informa de binarios; no ejecuta capturas, modo monitor ni ataques.
 - `GET /api/wifi`: lectura de redes cercanas mediante Termux:API, si está instalada y autorizada.
 - `POST /api/scan`: inventario TCP de un único IPv4 privado autorizado, limitado a 20 puertos habituales.
 
@@ -61,6 +62,10 @@ El Centro Wi-Fi incluye un análisis pasivo de los anuncios recibidos por Termux
 Incluye además una comprobación offline de la contraseña de una red que el usuario controla. La compara con una pequeña lista integrada de claves habituales y, opcionalmente, con un diccionario .txt elegido por el usuario (máximo 5 MB). Todo se procesa en el navegador: la contraseña se borra del campo al terminar y no se transmite ni se guarda. Es una comparación exacta de texto y una heurística orientativa, no una estimación criptográfica de entropía.
 
 **Límites deliberados:** no captura handshakes, no recupera claves de redes, no ejecuta fuerza bruta ni ataques de diccionario contra puntos de acceso, no intenta autenticarse ni lanza intentos de contraseña contra ninguna red. La lista integrada es breve y no exhaustiva; una ausencia de coincidencia no demuestra que la contraseña sea segura. El análisis Wi-Fi se basa únicamente en metadatos anunciados y no demuestra que una red sea vulnerable. WPS anunciado es un indicador para revisar, no una vulnerabilidad confirmada.
+
+### Motores Wi-Fi y Aircrack-ng
+
+El puente puede comprobar si los ejecutables `aircrack-ng`, `airmon-ng`, `airodump-ng` e `iw` están instalados en Termux. Este diagnóstico de disponibilidad no implica compatibilidad con el hardware Android: el acceso a modo monitor suele depender del chipset, controlador y permisos, y no se puede inferir solo por tener los binarios. NEXUS no ejecuta captura de handshakes, cracking de claves ni intentos de autenticación contra redes reales. El motor de contraseñas disponible en NEXUS es una evaluación offline de claves propias y el laboratorio simulado.
 
 ### Laboratorio Wi-Fi simulado
 
