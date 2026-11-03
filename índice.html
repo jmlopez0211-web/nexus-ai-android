@@ -49,14 +49,61 @@ footer{margin-top:25px;font-size:13px;color:var(--muted)}
 #wifi-center input{margin-top:7px}
 #wifi-center button:disabled{opacity:.55;cursor:wait}
 
+
+:root{--bg:#050912;--panel:#0b1422;--line:#18364a;--neon:#35f2c2;--blue:#4ca6ff;--purple:#a879ff;--muted:#91a7ba}
+body{background:radial-gradient(ellipse at 80% -10%,#10263d 0,transparent 42%),radial-gradient(ellipse at 0 40%,#0b1c2c 0,transparent 38%),#050912;color:#e8f6ff}
+main{max-width:1040px;padding:22px 16px 48px}
+header{position:relative;overflow:hidden;min-height:190px;padding:18px 20px;border:1px solid #1c4054;border-radius:22px;background:linear-gradient(115deg,#0b1726 0%,#0a1421 58%,#10283a 100%);box-shadow:0 18px 55px #0008}
+.logo{border-color:var(--neon);color:var(--neon);background:#09251f;font-weight:900}
+h1{font-size:clamp(26px,5vw,36px);letter-spacing:4px}
+header small{letter-spacing:3px;color:#8ca9bc}
+.status{align-self:flex-start;color:var(--neon);font-weight:700}
+.hero-art{position:absolute;right:12px;bottom:-8px;width:min(43%,330px);height:190px;opacity:.95;pointer-events:none}
+h2{font-size:19px;letter-spacing:.5px}
+.panel{background:linear-gradient(145deg,#0d1a2a,#091321);border:1px solid #1a3a50;border-radius:18px;box-shadow:0 12px 32px #0004}
+textarea,input{background:#07101c;border-color:#24445b;color:#e9f8ff}
+button{background:#0c2830;border-color:#267e78;color:#75ffdc;transition:transform .15s,border-color .15s,background .15s}
+button:hover{transform:translateY(-1px);border-color:var(--neon);background:#10353a}
+.primary{background:linear-gradient(90deg,#35f2c2,#55b9ff);color:#03131a;border:0}
+.grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.tile{min-height:112px;background:linear-gradient(145deg,#10243a,#0b1726);border-color:#21445e}
+.tile span{font-size:28px;color:var(--neon)}
+.notice{background:#0a1d2a;border-left-color:var(--neon)}
+.wifi-network{background:#091827;border-color:#21455d}
+.web-result{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.metric{padding:12px;border:1px solid #20455b;border-radius:12px;background:#081522}
+.metric strong{display:block;font-size:23px;color:var(--neon)}
+.finding{padding:12px;margin:9px 0;border:1px solid #24445a;border-left:4px solid var(--blue);border-radius:10px;background:#081522}
+.finding.medium{border-left-color:#ffbf5b}.finding.low{border-left-color:#78aaff}.finding.info{border-left-color:#a879ff}
+.finding h4{margin:0 0 6px}.finding p{margin:5px 0;color:#b9ccda;line-height:1.45}
+.kicker{color:var(--neon);font-size:11px;letter-spacing:2px;font-weight:800}
+.audit-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.audit-actions button{flex:1;min-width:140px}
+.pill{display:inline-block;border:1px solid #28556a;border-radius:99px;padding:4px 9px;color:#a9c7d8;font-size:12px}
+footer{border-top:1px solid #18364a;padding-top:16px}
+@media(max-width:650px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-art{width:45%;opacity:.55}.web-result{grid-template-columns:repeat(2,minmax(0,1fr))}header{min-height:160px}}
+@media(max-width:390px){.grid{grid-template-columns:1fr 1fr}main{padding:12px}}
+
 </style>
 </head>
 <body>
 <main>
 <header>
 <div class="logo" aria-hidden="true">N</div>
-<div><h1>NEXUS AI</h1><small>DEFENSIVE INTELLIGENCE</small></div>
-<div class="status">● LOCAL UI</div>
+<div style="position:relative;z-index:2"><h1>NEXUS AI</h1><small>DEFENSIVE INTELLIGENCE · SECURITY LAB</small><p class="kicker">SYSTEM ONLINE / ANALYSIS MODE</p></div>
+<div class="status" id="header-status">● COMPROBANDO API</div>
+<svg class="hero-art" viewBox="0 0 340 190" role="img" aria-label="Ilustración original de analista de ciberseguridad con capucha y pantallas de diagnóstico">
+<defs><linearGradient id="hood" x1="0" x2="1"><stop stop-color="#1c6471"/><stop offset="1" stop-color="#14233f"/></linearGradient><linearGradient id="screen" x1="0" x2="1"><stop stop-color="#35f2c2"/><stop offset="1" stop-color="#4ca6ff"/></linearGradient></defs>
+<g fill="none" stroke="#1b6070" opacity=".55"><path d="M10 34h92v48H10zM245 20h80v58h-80zM22 130h80v30H22z"/><path d="M18 47h50m-50 9h68m-68 9h39M253 34h52m-52 9h42m-42 9h57"/></g>
+<path d="M106 190c5-38 23-57 49-66l15-24h44l17 24c27 10 42 29 47 66z" fill="#0a1728" stroke="#2a7780" stroke-width="2"/>
+<path d="M124 106c-4-47 19-87 57-91 43-5 69 34 63 91l-24 31h-70z" fill="url(#hood)" stroke="#42c9b3" stroke-width="2"/>
+<path d="M149 84c4-22 18-36 34-36 18 0 31 14 35 36l-12 27h-46z" fill="#08111e" stroke="#367d8c"/>
+<path d="M157 82l22 6 22-6-5 12h-34z" fill="#35f2c2" opacity=".85"/>
+<path d="M166 96h27" stroke="#b5fff1" stroke-width="2"/>
+<path d="M136 139l31 22 21-12 22 12 34-22" fill="none" stroke="#35f2c2" stroke-width="2"/>
+<g fill="url(#screen)"><circle cx="288" cy="112" r="3"/><circle cx="302" cy="126" r="2"/><circle cx="275" cy="143" r="2"/></g>
+<path d="M268 112h-25m59 14h-21m-18 17h-25" stroke="#35f2c2" stroke-width="1.5" opacity=".8"/>
+</svg>
 </header>
 <section class="panel">
 <h2>¿Qué necesitas hacer?</h2>
@@ -65,12 +112,12 @@ footer{margin-top:25px;font-size:13px;color:var(--muted)}
 <button class="primary" onclick="askNexus()">Analizar solicitud</button>
 <p id="result" role="status" aria-live="polite">Sistema preparado. Selecciona una herramienta o escribe una tarea.</p><p id="api-status" class="muted" role="status" aria-live="polite">Comprobando conexión con NEXUS…</p>
 </section>
-<h2>Laboratorios</h2>
+<h2>Centro de operaciones</h2>
 <div class="grid">
-<button class="tile" onclick="tool('wifi')"><span>⌁</span>Wi-Fi seguro</button>
-<button class="tile" onclick="tool('security')"><span>◈</span>Seguridad</button>
-<button class="tile" onclick="tool('python')"><span>⌘</span>Python 3</button>
-<button class="tile" onclick="tool('java')"><span>▣</span>Java</button>
+<button class="tile" onclick="tool('wifi')"><span>⌁</span>Wi-Fi en vivo<small>Termux:API</small></button>
+<button class="tile" onclick="openWebAudit()"><span>◈</span>Auditoría web<small>Cabeceras y cookies</small></button>
+<button class="tile" onclick="focusAssistant()"><span>⌘</span>Asistente IA<small>Diagnóstico defensivo</small></button>
+<button class="tile" onclick="exportNexusHistory()"><span>▣</span>Informes<small>Exportar historial</small></button>
 </div>
 
 <section id="wifi-center" class="panel" hidden aria-labelledby="wifi-title">
@@ -119,14 +166,25 @@ footer{margin-top:25px;font-size:13px;color:var(--muted)}
   <div id="wifi-history" class="muted" style="margin-top:10px"></div>
 </section>
 
+<section id="web-audit" class="panel" style="margin-top:18px" aria-labelledby="web-audit-title">
+<p class="kicker">MODULE 02 / WEB POSTURE</p>
+<h2 id="web-audit-title">Auditoría de configuración web</h2>
+<p class="muted">Comprueba una URL pública autorizada. Realiza solicitudes HTTP limitadas y revisa cabeceras, redirecciones y atributos de cookies. No explota vulnerabilidades ni rastrea el sitio.</p>
+<label for="audit-url">URL del sitio</label>
+<input id="audit-url" type="url" placeholder="https://tu-dominio.es/" autocomplete="url">
+<label style="display:flex;gap:10px;align-items:flex-start;margin-top:12px"><input id="audit-authorized" type="checkbox" style="width:auto;margin-top:4px"><span>Confirmo que soy propietario del sitio o tengo autorización expresa para revisarlo.</span></label>
+<div class="audit-actions"><button class="primary" id="run-web-audit" type="button">Ejecutar comprobación</button><button id="export-web-audit" type="button" disabled>Exportar resultado JSON</button></div>
+<p id="audit-status" class="muted" role="status" aria-live="polite">Esperando una URL y confirmación de autorización.</p>
+<div id="audit-results" aria-live="polite"></div>
+</section>
 <section class="panel" style="margin-top:18px">
 <h2>Estado del laboratorio</h2>
 <p>Interfaz: <strong>activa</strong></p>
 <p>Auditorías: requieren autorización y permisos compatibles.</p>
 <p>Python/Java: el editor y la ejecución se incorporarán en módulos posteriores.</p>
-<p>IA: conexión disponible; verificación al analizar una solicitud.</p>
+<p>IA: estado de conexión verificado en cada consulta.</p>
 </section>
-<footer>NEXUS AI · Prototipo inicial · Accesibilidad y uso responsable</footer>
+<footer>NEXUS AI · Defensive Intelligence · Auditorías autorizadas · Resultados verificables</footer>
 </main>
 <script 
 src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -160,9 +218,10 @@ async function comprobarConexion() {
     const respuesta = await fetch("https://nexus-ai-android-3.onrender.com/api/health", {cache:"no-store"});
     if (!respuesta.ok) throw new Error("Servidor no disponible");
     const datos = await respuesta.json();
-    estado.textContent = datos.ai_connected
-      ? "IA: backend disponible; la consulta se verifica al enviar una tarea."
+    estado.textContent = datos.ai_configured
+      ? "IA: clave configurada; conexión real pendiente de validar con una consulta."
       : "IA: backend disponible, pero falta configurar la clave del modelo.";
+    const header=document.getElementById("header-status"); if(header) header.textContent="● API DISPONIBLE";
   } catch (error) {
     estado.textContent = "IA: no se pudo comprobar la conexión (" + error.message + ").";
   }
@@ -303,5 +362,64 @@ async function scanNexusWifi(){
   }finally{button.disabled=false;button.textContent="Buscar redes reales";}
 }
 </script>
+
+<script>
+let latestWebAudit = null;
+const AUDIT_HISTORY_KEY = "nexus_web_audit_history_v1";
+function openWebAudit(){const el=document.getElementById("web-audit");el.scrollIntoView({behavior:"smooth",block:"start"});document.getElementById("audit-url").focus();}
+function focusAssistant(){document.getElementById("task").focus();document.getElementById("task").scrollIntoView({behavior:"smooth",block:"center"});}
+function safeText(value){return String(value??"");}
+function renderWebAudit(data){
+ const root=document.getElementById("audit-results");root.replaceChildren();
+ const summary=data.summary||{};
+ const metrics=document.createElement("div");metrics.className="web-result";
+ [["Hallazgos",summary.total||0],["Medios",summary.medium||0],["Bajos",summary.low||0],["HTTP",data.status_code||"—"]].forEach(([label,value])=>{
+  const card=document.createElement("div");card.className="metric";const strong=document.createElement("strong");strong.textContent=value;const small=document.createElement("small");small.textContent=label;card.append(strong,small);metrics.append(card);
+ });
+ root.append(metrics);
+ const chain=document.createElement("p");chain.className="muted";chain.textContent="Redirecciones comprobadas: "+((data.redirect_chain||[]).length)+" · HTTPS: "+(data.https?"Sí":"No")+" · Cookies observadas: "+(data.cookie_count||0);root.append(chain);
+ if(!(data.findings||[]).length){const ok=document.createElement("div");ok.className="notice";ok.textContent="No se detectaron las carencias de configuración incluidas en esta comprobación básica. Esto no demuestra que el sitio esté libre de vulnerabilidades.";root.append(ok);}
+ (data.findings||[]).forEach(item=>{
+  const box=document.createElement("article");box.className="finding "+safeText(item.severity);
+  const heading=document.createElement("h4");heading.textContent="["+safeText(item.severity).toUpperCase()+"] "+safeText(item.title);
+  const detail=document.createElement("p");detail.textContent=safeText(item.detail);
+  const fix=document.createElement("p");fix.textContent="Recomendación: "+safeText(item.recommendation);
+  box.append(heading,detail,fix);root.append(box);
+ });
+ const limits=document.createElement("p");limits.className="muted";limits.textContent=(data.limitations||[]).join(" ");root.append(limits);
+}
+async function runWebAudit(){
+ const button=document.getElementById("run-web-audit"),status=document.getElementById("audit-status");
+ const url=document.getElementById("audit-url").value.trim();
+ if(!url){status.textContent="Introduce la URL del sitio.";return;}
+ if(!document.getElementById("audit-authorized").checked){status.textContent="Debes confirmar la autorización antes de ejecutar la revisión.";return;}
+ button.disabled=true;button.textContent="Analizando…";status.textContent="Comprobando una única URL y sus redirecciones…";
+ document.getElementById("audit-results").replaceChildren();latestWebAudit=null;
+ try{
+  const response=await fetch("/api/audit/web",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url,authorized:true})});
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||("HTTP "+response.status));
+  latestWebAudit=data;renderWebAudit(data);
+  const history=JSON.parse(localStorage.getItem(AUDIT_HISTORY_KEY)||"[]");
+  history.unshift({date:new Date().toISOString(),url:data.url,status:data.status_code,findings:data.summary.total});
+  localStorage.setItem(AUDIT_HISTORY_KEY,JSON.stringify(history.slice(0,30)));
+  document.getElementById("export-web-audit").disabled=false;
+  status.textContent="Comprobación terminada. Revisa los hallazgos y valida manualmente las recomendaciones.";
+ }catch(error){status.textContent="No se pudo completar: "+error.message;}
+ finally{button.disabled=false;button.textContent="Ejecutar comprobación";}
+}
+document.getElementById("run-web-audit").addEventListener("click",runWebAudit);
+document.getElementById("export-web-audit").addEventListener("click",()=>{
+ if(!latestWebAudit)return;
+ const blob=new Blob([JSON.stringify({application:"NEXUS IA",generated_at:new Date().toISOString(),result:latestWebAudit},null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="nexus-auditoria-web.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+function exportNexusHistory(){
+ const payload={application:"NEXUS IA",generated_at:new Date().toISOString(),wifi_history:readLocal(WIFI_HISTORY_KEY),web_audit_history:readLocal(AUDIT_HISTORY_KEY)};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="nexus-historial-auditorias.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+</script>
+
 </body>
 </html>
