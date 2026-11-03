@@ -84,6 +84,34 @@ footer{border-top:1px solid #18364a;padding-top:16px}
 @media(max-width:650px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-art{width:45%;opacity:.55}.web-result{grid-template-columns:repeat(2,minmax(0,1fr))}header{min-height:160px}}
 @media(max-width:390px){.grid{grid-template-columns:1fr 1fr}main{padding:12px}}
 
+
+/* Compactación móvil: reduce desplazamiento sin ocultar controles. */
+@media(max-width:650px){
+ main{padding:10px 10px 28px}
+ header{min-height:112px;padding:12px 14px;margin:6px 0 14px;border-radius:15px}
+ .hero-art{height:112px;width:38%;opacity:.28}
+ h1{font-size:24px;letter-spacing:2px}
+ h2{font-size:17px;margin:16px 0 9px}
+ .panel{padding:11px;margin-bottom:9px;border-radius:13px}
+ .grid{gap:8px}
+ .tile{min-height:76px;padding:9px;font-size:13px}
+ .tile span{font-size:21px;margin-bottom:3px}
+ textarea,input{padding:10px;font-size:14px}
+ textarea{min-height:66px}
+ button{padding:10px;font-size:13px}
+ .notice,.finding,.wifi-network{padding:9px}
+ .finding{margin:6px 0}
+ .finding p,.muted{font-size:12px;line-height:1.4}
+ .web-result{gap:6px;margin:9px 0}
+ .metric{padding:8px}
+ .metric strong{font-size:18px}
+ #wifi-center h3{font-size:15px;margin:13px 0 7px}
+ #wifi-networks{gap:6px}
+ .wifi-meta{font-size:11px}
+ .audit-actions{gap:6px;margin-top:8px}
+ .audit-actions button{min-width:0}
+}
+
 </style>
 </head>
 <body>
@@ -143,6 +171,14 @@ footer{border-top:1px solid #18364a;padding-top:16px}
     <p id="local-scan-status" class="muted" role="status" aria-live="polite">Sin escaneo local.</p>
     <div id="local-scan-results"></div>
   </div>
+  <section class="panel compact-engine-panel" id="wifi-engines" aria-labelledby="wifi-engines-title">
+    <h3 id="wifi-engines-title">Motores y herramientas</h3>
+    <p class="muted">Diagnóstico de disponibilidad en Termux. Aircrack-ng se detecta, pero NEXUS no ejecuta ataques ni captura tráfico.</p>
+    <div class="audit-actions"><button id="check-wifi-engines" type="button">Comprobar motores instalados</button></div>
+    <div id="wifi-engine-status" class="muted" role="status" aria-live="polite">Pendiente de comprobar el puente local.</div>
+    <div id="wifi-engine-results"></div>
+    <div class="notice" style="margin-top:10px"><strong>Motor de auditoría de contraseñas offline</strong><br>Utiliza la evaluación local y el diccionario .txt del apartado de seguridad Wi-Fi. No realiza conexiones ni intentos de autenticación.</div>
+  </section>
   <div id="wifi-networks" aria-live="polite"></div>
 
   <section class="panel" id="wireless-audit-panel" aria-labelledby="wireless-audit-title">
@@ -692,6 +728,29 @@ document.getElementById("export-wifi-simulation").addEventListener("click",()=>{
  const blob=new Blob([JSON.stringify(latestWifiSimulation,null,2)],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="nexus-laboratorio-wifi-simulado.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
+</script>
+
+
+<script>
+async function checkWifiEngines(){
+ const status=document.getElementById("wifi-engine-status"),root=document.getElementById("wifi-engine-results");
+ const base=getWifiBridgeUrl(),token=document.getElementById("nexus-wifi-token").value.trim();
+ if(!token){status.textContent="Introduce el token del puente Termux para consultar las herramientas.";return;}
+ status.textContent="Consultando herramientas instaladas en Termux…";root.replaceChildren();
+ try{
+  const response=await fetch(base+"/api/tools",{headers:{"Authorization":"Bearer "+token},cache:"no-store"});
+  const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||("HTTP "+response.status));
+  Object.entries(data.tools).forEach(([name,item])=>{
+   const row=document.createElement("div");row.className="finding "+(item.installed?"info":"low");
+   const title=document.createElement("h4");title.textContent=name+" · "+(item.installed?"instalado":"no detectado");
+   const detail=document.createElement("p");detail.textContent=item.installed?("Ruta: "+item.path):"No se encontró en PATH de Termux.";
+   row.append(title,detail);root.append(row);
+  });
+  const note=document.createElement("p");note.className="muted";note.textContent=data.note;root.append(note);
+  status.textContent="Comprobación terminada en "+data.platform+". Solo se ha consultado la disponibilidad de ejecutables.";
+ }catch(error){status.textContent="No se pudo consultar el puente: "+error.message;}
+}
+document.getElementById("check-wifi-engines").addEventListener("click",checkWifiEngines);
 </script>
 
 </body>
