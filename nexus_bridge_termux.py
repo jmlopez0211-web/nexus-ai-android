@@ -29,6 +29,7 @@ PORTS = {
     27017: "MongoDB"
 }
 CONNECT_TIMEOUT = 0.45
+WIFI_CACHE = []
 
 
 def validate_lan_target(value):
@@ -150,7 +151,26 @@ class Handler(BaseHTTPRequestHandler):
                 "channel_bandwidth_mhz": item.get("channel_bandwidth_mhz"),
                 "capabilities": item.get("capabilities", "")
             } for item in raw if isinstance(item, dict)]
-            return self._reply(200, {"ok": True, "mode": "live", "count": len(networks), "networks": networks}, origin)
+
+            # Android may temporarily return an empty/partial scan because of
+            # Wi-Fi scan throttling. Preserve the last non-empty inventory.
+            global WIFI_CACHE
+            if networks:
+                WIFI_CACHE = networks
+                cached = False
+            elif WIFI_CACHE:
+                networks = list(WIFI_CACHE)
+                cached = True
+            else:
+                cached = False
+            return self._reply(200, {
+                "ok": True,
+                "mode": "cached" if cached else "live",
+                "cached": cached,
+                "count": len(networks),
+                "networks": networks,
+                "note": "Se muestra el último inventario válido porque Android no devolvió resultados nuevos." if cached else ""
+            }, origin)
         except subprocess.TimeoutExpired:
             return self._reply(504, {"ok": False, "error": "Termux:API superó 25 segundos"}, origin)
         except Exception as exc:
