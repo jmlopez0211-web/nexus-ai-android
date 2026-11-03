@@ -589,7 +589,7 @@ async function checkOwnWifiPassphrase() {
   const checks=[];
   if(value.length<12)checks.push("Tiene menos de 12 caracteres; utiliza una frase larga, única y aleatoria.");
   else if(value.length>=16)checks.push("Longitud favorable: 16 caracteres o más.");
-  if(/^(.)\\1+$/.test(value))checks.push("Evita repetir un único carácter.");
+  if(/^(.)\1+$/.test(value))checks.push("Evita repetir un único carácter.");
   if(/password|contraseñ|123456|qwerty|admin|wifi/i.test(value))checks.push("Contiene una palabra o secuencia habitual.");
   let dictionaryMatch=COMMON_WIFI_PASSWORDS.has(target);
   let dictionarySource=dictionaryMatch?"lista integrada de claves habituales":null;
@@ -597,12 +597,12 @@ async function checkOwnWifiPassphrase() {
   if(file){
     if(file.size>5*1024*1024){output.textContent="El diccionario supera 5 MB. Selecciona un archivo más pequeño.";return;}
     const dictionaryText=await file.text();
-    const customMatch=dictionaryText.split(/\\r?\\n/).some(line=>line.trim().normalize("NFKC").toLocaleLowerCase()===target);
+    const customMatch=dictionaryText.split(/\r?\n/).some(line=>line.trim().normalize("NFKC").toLocaleLowerCase()===target);
     if(customMatch){dictionaryMatch=true;dictionarySource="diccionario local seleccionado";}
   }
   if(dictionaryMatch)checks.push("Coincidencia exacta en "+dictionarySource+". Cambia esa contraseña inmediatamente.");
   else checks.push(file?"Sin coincidencia exacta en las listas consultadas; no garantiza que sea segura.":"No coincide con la pequeña lista integrada; añade un diccionario propio para una revisión más amplia.");
-  const score=(value.length>=20?3:value.length>=16?2:value.length>=12?1:0)+(/[a-z]/.test(value)&&/[A-Z]/.test(value)?1:0)+(/[0-9]/.test(value)?1:0)+(/[^A-Za-z0-9]/.test(value)?1:0)-(/^(.)\\1+$/.test(value)?2:0)-(dictionaryMatch?5:0);
+  const score=(value.length>=20?3:value.length>=16?2:value.length>=12?1:0)+(/[a-z]/.test(value)&&/[A-Z]/.test(value)?1:0)+(/[0-9]/.test(value)?1:0)+(/[^A-Za-z0-9]/.test(value)?1:0)-(/^(.)\1+$/.test(value)?2:0)-(dictionaryMatch?5:0);
   const level=dictionaryMatch||value.length<12||score<=1?"Débil":score<=3?"Mejorable":"Favorable según reglas básicas";
   output.textContent="Evaluación orientativa: "+level+". "+checks.join(" ")+" Comprobación offline: no se ha contactado con el router.";
   input.value="";
