@@ -164,6 +164,8 @@ class Handler(BaseHTTPRequestHandler):
             if length < 1 or length > 4096:
                 return self._reply(413, {"ok": False, "error": "Tamaño de solicitud no válido"}, origin)
             data = json.loads(self.rfile.read(length))
+            if not isinstance(data, dict):
+                return self._reply(400, {"ok": False, "error": "El cuerpo JSON debe ser un objeto"}, origin)
             if data.get("authorized") is not True:
                 return self._reply(403, {"ok": False, "error": "Confirma que tienes autorización para revisar ese equipo"}, origin)
             result = scan_host(data.get("target", ""))
