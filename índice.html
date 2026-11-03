@@ -70,6 +70,22 @@ button:hover{transform:translateY(-1px);border-color:var(--neon);background:#103
 .tile span{font-size:28px;color:var(--neon)}
 .notice{background:#0a1d2a;border-left-color:var(--neon)}
 .wifi-network{background:#091827;border-color:#21455d}
+.wifi-network{background:#091827;border-color:#21455d}
+.wifi-network{padding:15px;border-radius:14px}
+.wifi-network-head{align-items:center;flex-wrap:wrap}
+.wifi-network-head strong{font-size:16px;line-height:1.35;color:#173b52}
+.wifi-network-head>span{font-size:15px;font-weight:800;color:#087f73;white-space:nowrap}
+.wifi-meta{font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+.wifi-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.wifi-tag{display:inline-flex;align-items:center;border:1px solid #cbdce8;border-radius:999px;padding:4px 9px;background:#edf5fa;color:#254b61;font-size:12px;font-weight:750}
+.wifi-tag.good{background:#e8f6ef;border-color:#b6dfc9;color:#17643c}
+.wifi-tag.warn{background:#fff5e5;border-color:#f0d29c;color:#87540a}
+.wifi-tag.risk{background:#fff0ef;border-color:#efc0bc;color:#9b3028}
+.wifi-signal-track{height:6px;max-width:180px;background:#dce8ef;border-radius:99px;overflow:hidden;margin-top:7px}
+.wifi-signal-fill{height:100%;background:linear-gradient(90deg,#d7a13d,#16866f);border-radius:99px}
+.finding h4{font-size:16px;line-height:1.4;color:#183c52}
+.finding p{font-size:14px;line-height:1.55}
+@media(max-width:560px){.wifi-network{padding:14px}.wifi-network-head strong{font-size:16px}.wifi-meta{font-size:14px}.wifi-tag{font-size:12px}.finding{padding:14px}.finding h4{font-size:16px}.finding p{font-size:14px}}
 .web-result{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
 .metric{padding:12px;border:1px solid #20455b;border-radius:12px;background:#081522}
 .metric strong{display:block;font-size:23px;color:var(--neon)}
@@ -446,17 +462,30 @@ async function scanNexusWifi(){
     else if(isCached)status.textContent="Inventario local recuperado de caché ("+count+" redes). No es un escaneo nuevo.";
     else status.textContent="Consulta completada: "+count+" redes recibidas de Termux:API.";
     if(!count){list.textContent="El puente está autenticado, pero Android no ha entregado redes. Abre Termux, ejecuta termux-wifi-scaninfo y vuelve a consultar en unos segundos.";return;}
-    for(const network of networks){
+    const orderedNetworks=[...networks].sort((a,b)=>(Number(b.rssi)||-120)-(Number(a.rssi)||-120));
+    for(const network of orderedNetworks){
       const card=document.createElement("article");card.className="wifi-network";
       const head=document.createElement("div");head.className="wifi-network-head";
       const name=document.createElement("strong");name.textContent=network.ssid||"(SSID oculto)";
       const signal=document.createElement("span");signal.textContent=(network.rssi??"N/D")+" dBm";
       head.append(name,signal);
+      const frequency=Number(network.frequency_mhz);
+      const band=frequency>=5925&&frequency<=7125?"6 GHz":frequency>=4900&&frequency<5925?"5 GHz":frequency>=2400&&frequency<2500?"2,4 GHz":"Banda desconocida";
+      let channel="Canal N/D";
+      if(Number.isFinite(frequency)&&frequency>=2400&&frequency<2500)channel="Canal "+(frequency===2484?14:Math.round((frequency-2407)/5));
+      else if(Number.isFinite(frequency)&&frequency>=4900&&frequency<5925)channel="Canal "+Math.round((frequency-5000)/5);
+      else if(Number.isFinite(frequency)&&frequency>=5925&&frequency<=7125)channel="Canal "+Math.round((frequency-5950)/5);
       const meta=document.createElement("div");meta.className="wifi-meta";
-      meta.textContent="BSSID: "+(network.bssid||"N/D")+" · Frecuencia: "+(network.frequency_mhz??"N/D")+" MHz · Ancho: "+(network.channel_bandwidth_mhz??"N/D")+" MHz";
-      const caps=document.createElement("div");caps.className="wifi-meta";caps.textContent="Seguridad anunciada: "+(network.capabilities||"No identificable");
-      if(String(network.capabilities||"").includes("WPS"))caps.classList.add("wifi-warning");
-      card.append(head,meta,caps);list.append(card);
+      meta.textContent="BSSID: "+(network.bssid||"N/D")+" · "+band+" · "+channel+" · Ancho: "+(network.channel_bandwidth_mhz??"N/D")+" MHz";
+      const audit=classifyWifiSecurity(network);
+      const tags=document.createElement("div");tags.className="wifi-tags";
+      const security=document.createElement("span");security.className="wifi-tag "+(audit.severity==="high"?"risk":audit.severity==="medium"?"warn":"good");security.textContent=audit.security;tags.append(security);
+      if(String(network.capabilities||"").toUpperCase().includes("WPS")){const wps=document.createElement("span");wps.className="wifi-tag warn";wps.textContent="WPS anunciado";tags.append(wps);}
+      const rssi=Number(network.rssi);
+      const signalTrack=document.createElement("div");signalTrack.className="wifi-signal-track";signalTrack.setAttribute("role","img");signalTrack.setAttribute("aria-label","Señal "+audit.signal);
+      const signalFill=document.createElement("div");signalFill.className="wifi-signal-fill";signalFill.style.width=Number.isFinite(rssi)?Math.max(0,Math.min(100,2*(rssi+100)))+"%":"0%";signalTrack.append(signalFill);
+      const caps=document.createElement("div");caps.className="wifi-meta";caps.textContent="Capacidades anunciadas: "+(network.capabilities||"No identificables");
+      card.append(head,meta,tags,signalTrack,caps);list.append(card);
     }
   }catch(error){
     const message=error.name==="TimeoutError"?"El puente tardó más de 18 segundos en responder.":error.message;
