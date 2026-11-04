@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
-from nexus_wireless_engine import inventory_tools
+from nexus_wireless_engine import inventory_tools, run_tool_module
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
@@ -249,7 +249,22 @@ class Handler(BaseHTTPRequestHandler):
             return
         if not self._authorized(origin):
             return
-        if urlparse(self.path).path != "/api/scan":
+        path = urlparse(self.path).path
+        if path == "/api/tooling/launch":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length < 1 or length > 2048:
+                    return self._reply(413, {"ok": False, "error": "Tamaño de solicitud no válido"}, origin)
+                data = json.loads(self.rfile.read(length))
+                if not isinstance(data, dict):
+                    return self._reply(400, {"ok": False, "error": "El cuerpo JSON debe ser un objeto"}, origin)
+                result = run_tool_module(data.get("module_id", ""))
+                return self._reply(200, result, origin)
+            except (ValueError, json.JSONDecodeError) as exc:
+                return self._reply(400, {"ok": False, "error": str(exc)}, origin)
+            except Exception as exc:
+                return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
+        if path != "/api/scan":
             return self._reply(404, {"ok": False, "error": "Ruta no encontrada"}, origin)
         try:
             length = int(self.headers.get("Content-Length", "0"))
