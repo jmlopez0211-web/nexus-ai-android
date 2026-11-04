@@ -12,9 +12,13 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("NEXUS IA mobile refresh", self.html)
         self.assertIn("@media(max-width:560px)", self.html)
 
-    def test_bridge_token_is_sent_as_bearer_and_not_to_render(self):
-        self.assertIn("WIFI_BRIDGE_TOKEN_SESSION_KEY", self.html)
-        self.assertIn("safeStorageSet(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", self.html)
+    def test_bridge_token_is_persisted_and_sent_as_bearer(self):
+        self.assertIn('const WIFI_BRIDGE_TOKEN_KEY = "nexus_wifi_bridge_token"', self.html)
+        self.assertIn("function getBridgeToken()", self.html)
+        self.assertIn("function persistBridgeToken(token)", self.html)
+        self.assertIn("safeStorageSet(localStorage,WIFI_BRIDGE_TOKEN_KEY,token)", self.html)
+        self.assertIn("nexusWifiTokenField.addEventListener(\"input\"", self.html)
+        self.assertIn("persistBridgeToken(token)", self.html)
         self.assertIn('Authorization:"Bearer "+token', self.html)
         self.assertIn("El token no se envía a Render", self.html)
 
