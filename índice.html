@@ -167,8 +167,9 @@ footer{color:#62798a;border-color:#d7e4ed}
   <div class="notice"><strong>Puente local Termux:API</strong><br>Conecta este panel con el puente que se ejecuta en tu Samsung. El puente solo escucha en 127.0.0.1 y debe mantenerse local.</div>
   <label for="nexus-wifi-bridge">Dirección del puente local</label>
   <input id="nexus-wifi-bridge" type="url" value="http://127.0.0.1:8766" autocomplete="url">
-  <label for="nexus-wifi-token">Token local (se conserva solo durante esta sesión)</label>
+  <label for="nexus-wifi-token">Token local (se guarda en este navegador hasta que pulses «Olvidar token»)</label>
   <input id="nexus-wifi-token" type="password" placeholder="Opcional; no lo compartas">
+  <p class="muted">El token se utiliza solo para autenticar peticiones al puente local de Termux. No se envía al servidor de NEXUS.</p>
   <div class="rowline">
     <button id="save-wifi-bridge" type="button">Guardar dirección</button>
     <button id="clear-wifi-token" type="button">Olvidar token</button>
