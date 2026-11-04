@@ -192,6 +192,18 @@ footer{color:#62798a;border-color:#d7e4ed}
     <p id="python-engine-status" class="muted" role="status" aria-live="polite">Sin comprobación todavía.</p>
     <div id="python-engine-results" aria-live="polite"></div>
   </section>
+  <section class="panel" id="nexus-python-plugins" aria-labelledby="nexus-python-plugins-title">
+    <h3 id="nexus-python-plugins-title">Python Launcher · Plugins ampliables</h3>
+    <p class="muted">Permite añadir nuevos scripts Python propios en Termux y registrarlos por separado. Cada plugin tiene estado, aprobación explícita y botón de arranque independiente. Solo añade código de confianza: los scripts se ejecutan con los permisos de Termux, no dentro de un sandbox.</p>
+    <div class="audit-actions">
+      <button type="button" id="refresh-python-plugins">Actualizar lista de plugins</button>
+    </div>
+    <p id="python-plugins-status" class="muted" role="status" aria-live="polite">Sin consultar el registro de plugins.</p>
+    <div id="python-plugins-results" aria-live="polite"></div>
+    <details><summary>Cómo añadir un módulo Python</summary>
+      <p class="muted">Carpeta: ~/.nexus-ai/plugins/modules/ · Registro: ~/.nexus-ai/plugins/registry.json. Añade un archivo .py y una entrada JSON con id, name, entrypoint, description y approved:false. Revisa el código antes de cambiar approved a true. No se instala ni ejecuta código descargado automáticamente.</p>
+    </details>
+  </section>
   <div id="wifi-networks" aria-live="polite"></div>
 
   <section class="panel" id="wireless-audit-panel" aria-labelledby="wireless-audit-title">
@@ -591,6 +603,41 @@ async function launchPythonModule(moduleId,button,card){
   if(latestPythonEngineReport){latestPythonEngineReport.last_module_run=data;latestPythonEngineReport.generated_at=new Date().toISOString();}
  }catch(error){status.textContent="No se pudo iniciar el módulo Python: "+error.message;}
  finally{button.disabled=false;button.textContent="Iniciar módulo Python";}
+}
+
+document.getElementById("refresh-python-plugins").addEventListener("click",refreshPythonPlugins);
+async function refreshPythonPlugins(){
+ const status=document.getElementById("python-plugins-status"),root=document.getElementById("python-plugins-results");
+ const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+ if(!token){status.textContent="Introduce el token local y guarda la conexión.";return;}
+ status.textContent="Consultando registro Python…";root.replaceChildren();
+ try{
+  const response=await fetch(getWifiBridgeUrl()+"/api/plugins",{headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:AbortSignal.timeout(12000)});
+  const data=await response.json();if(!response.ok||data.ok!==true||!Array.isArray(data.plugins))throw new Error(data.error||("HTTP "+response.status));
+  if(!data.plugins.length){status.textContent="No hay plugins registrados. Consulta Cómo añadir un módulo Python.";return;}
+  data.plugins.forEach(plugin=>{
+   const card=document.createElement("article");card.className="finding";
+   const heading=document.createElement("h4");heading.textContent=plugin.name+" · "+plugin.status;
+   const description=document.createElement("p");description.textContent=plugin.description+" · Archivo: "+plugin.entrypoint;
+   const button=document.createElement("button");button.type="button";button.textContent="Arrancar plugin Python";
+   button.disabled=!plugin.detected||!plugin.approved;
+   button.addEventListener("click",()=>launchRegisteredPlugin(plugin.id,button,card));
+   card.append(heading,description,button);root.append(card);
+  });
+  status.textContent=data.plugins.length+" plugin(s) en el registro. Solo se pueden arrancar los aprobados y detectados.";
+ }catch(error){status.textContent="No se pudo consultar plugins: "+error.message;}
+}
+async function launchRegisteredPlugin(pluginId,button,card){
+ const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+ const status=document.getElementById("python-plugins-status");button.disabled=true;button.textContent="Arrancando…";
+ try{
+  const response=await fetch(getWifiBridgeUrl()+"/api/plugins/launch",{method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({plugin_id:pluginId}),signal:AbortSignal.timeout(35000)});
+  const data=await response.json();if(!response.ok||data.started!==true)throw new Error(data.error||("HTTP "+response.status));
+  const output=document.createElement("pre");output.className="finding";output.style.whiteSpace="pre-wrap";output.textContent="Código de salida: "+data.returncode+"\n\nSTDOUT:\n"+(data.stdout||"(sin salida)")+"\n\nSTDERR:\n"+(data.stderr||"(sin errores)")+"\n\n"+data.note;
+  const previous=card.querySelector(".plugin-output");if(previous)previous.remove();output.classList.add("plugin-output");card.append(output);
+  status.textContent=data.ok?"Plugin finalizado correctamente.":"Plugin iniciado, pero terminó con error o alcanzó el límite.";
+ }catch(error){status.textContent="No se pudo arrancar el plugin: "+error.message;}
+ finally{button.disabled=false;button.textContent="Arrancar plugin Python";}
 }
 </script>
 
