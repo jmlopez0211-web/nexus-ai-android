@@ -7,6 +7,7 @@ from audit_engine import AuditInputError, audit_url
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
+GROQ_MODEL = os.environ.get("NEXUS_GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 @app.get("/")
@@ -74,15 +75,16 @@ def comprobar_ia():
     try:
         cliente = Groq(api_key=clave, timeout=15.0, max_retries=0)
         respuesta = cliente.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": "Responde únicamente: NEXUS_OK"}],
             temperature=0,
-            max_tokens=8
+            reasoning_effort="low",
+            max_completion_tokens=128
         )
         texto = respuesta.choices[0].message.content or ""
         if "NEXUS_OK" not in texto:
             return jsonify({"ok": False, "code": "UNEXPECTED_RESPONSE", "error": "Groq respondió, pero el resultado de prueba no fue el esperado."}), 502
-        return jsonify({"ok": True, "code": "GROQ_CONNECTED", "message": "Conexión real con Groq confirmada.", "model": "llama-3.3-70b-versatile"})
+        return jsonify({"ok": True, "code": "GROQ_CONNECTED", "message": "Conexión real con Groq confirmada.", "model": GROQ_MODEL})
     except Exception as exc:
         return _groq_error_response(exc)
 
@@ -104,7 +106,7 @@ def consultar_ia():
     try:
         cliente = Groq(api_key=clave)
         respuesta = cliente.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=GROQ_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -118,7 +120,8 @@ def consultar_ia():
                 {"role": "user", "content": tarea}
             ],
             temperature=0.4,
-            max_tokens=1200
+            reasoning_effort="medium",
+            max_completion_tokens=1600
         )
         texto = respuesta.choices[0].message.content
         return jsonify({"respuesta": texto})
