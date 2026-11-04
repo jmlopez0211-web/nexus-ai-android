@@ -1,13 +1,14 @@
 """NEXUS defensive Python engine: runtime self-test and read-only Android diagnostics."""
 from __future__ import annotations
 import json
+import os
 import platform
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
-ENGINE_VERSION = "1.1.0"
+ENGINE_VERSION = "1.2.0"
 TOOL_CATALOG = (
     {"id":"wacker","name":"Wacker","commands":("wacker.py","wacker"),"purpose":"Herramienta de auditoría WPA3 conocida por realizar intentos de diccionario online.","risk":"alto","execution":"deshabilitada"},
     {"id":"hostapd_mana","name":"hostapd-mana","commands":("hostapd-mana",),"purpose":"Implementación de punto de acceso de pruebas con capacidades de suplantación y captura.","risk":"alto","execution":"deshabilitada"},
@@ -72,25 +73,58 @@ def _python_self_test():
         checks.append({"name": "Lectura/escritura temporal y JSON", "ok": False})
     return checks
 
-def _wifi_api_check(timeout=20):
+def _termux_wifi_command():
+    """Find Termux:API even when the bridge was launched with a reduced PATH."""
     command = shutil.which("termux-wifi-scaninfo")
+    if command:
+        return command
+    candidates = []
+    prefix = os.environ.get("PREFIX", "").strip()
+    if prefix:
+        candidates.append(Path(prefix) / "bin" / "termux-wifi-scaninfo")
+    candidates.extend((
+        Path("/data/data/com.termux/files/usr/bin/termux-wifi-scaninfo"),
+        Path("/data/user/0/com.termux/files/usr/bin/termux-wifi-scaninfo"),
+    ))
+    for candidate in candidates:
+        try:
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
+        except OSError:
+            continue
+    return None
+
+
+def _wifi_api_check(timeout=25):
+    command = _termux_wifi_command()
     if not command:
-        return {"available": False, "ok": False, "network_count": 0, "message": "No se encuentra termux-wifi-scaninfo."}
+        return {
+            "available": False, "ok": False, "network_count": 0,
+            "command_path": None,
+            "message": "No se encuentra termux-wifi-scaninfo en PATH ni en las rutas habituales de Termux. Comprueba que el puente se ejecuta dentro de Termux.",
+        }
     try:
-        result = subprocess.run([command], capture_output=True, text=True, timeout=timeout, check=False)
+        env = os.environ.copy()
+        prefix = os.environ.get("PREFIX", "").strip()
+        if prefix:
+            env["PATH"] = str(Path(prefix) / "bin") + os.pathsep + env.get("PATH", "")
+        result = subprocess.run([command], capture_output=True, text=True, timeout=timeout, check=False, env=env)
         if result.returncode != 0:
-            return {"available": True, "ok": False, "network_count": 0, "message": "Termux:API devolvió un error. Revisa permisos y aplicación Termux:API."}
+            return {"available": True, "ok": False, "network_count": 0, "command_path": command,
+                    "message": "El comando Termux:API existe, pero devolvió un error. Abre Termux:API, revisa permisos de ubicación/dispositivos cercanos y vuelve a probar."}
         payload = json.loads(result.stdout or "[]")
         if not isinstance(payload, list):
             raise ValueError("Respuesta no válida")
         count = sum(1 for item in payload if isinstance(item, dict))
-        return {"available": True, "ok": True, "network_count": count,
+        return {"available": True, "ok": True, "network_count": count, "command_path": command,
                 "message": "Termux:API respondió correctamente." if count else
                 "Termux:API respondió, pero Android no entregó redes en esta consulta."}
     except subprocess.TimeoutExpired:
-        return {"available": True, "ok": False, "network_count": 0, "message": "La consulta Wi-Fi superó el tiempo límite."}
+        return {"available": True, "ok": False, "network_count": 0, "command_path": command,
+                "message": "La consulta Wi-Fi superó 25 segundos. Comprueba que Termux:API responde desde la misma sesión."}
     except (OSError, ValueError, json.JSONDecodeError):
-        return {"available": True, "ok": False, "network_count": 0, "message": "No se pudo interpretar la respuesta de Termux:API."}
+        return {"available": True, "ok": False, "network_count": 0, "command_path": command,
+                "message": "El comando existe, pero su respuesta no es JSON válido o no se pudo ejecutar."}
 
 def inventory_tools():
     """Read-only catalogue plus actual Python runtime self-tests."""
