@@ -592,7 +592,7 @@ async function checkPythonEngine(){
  const button=document.getElementById("check-python-engine"),status=document.getElementById("python-engine-status"),root=document.getElementById("python-engine-results");
  button.disabled=true;button.textContent="Comprobando…";status.textContent="Consultando el motor Python local…";root.replaceChildren();
  try{
-  const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+  const token=(document.getElementById("nexus-wifi-token").value.trim()||getSavedWifiBridgeToken()||"").trim();
   if(!token)throw new Error("Introduce el token local y guarda la conexión.");
   const response=await fetch(getWifiBridgeUrl()+"/api/tooling",{headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:AbortSignal.timeout(12000)});
   const data=await response.json();
@@ -621,7 +621,7 @@ async function checkPythonEngine(){
 }
 
 async function launchPythonModule(moduleId,button,card){
- const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+ const token=(document.getElementById("nexus-wifi-token").value.trim()||getSavedWifiBridgeToken()||"").trim();
  const status=document.getElementById("python-engine-status");
  if(!token){status.textContent="Introduce el token local y guarda la conexión.";return;}
  button.disabled=true;button.textContent="Iniciando módulo…";
@@ -645,7 +645,7 @@ async function launchPythonModule(moduleId,button,card){
 document.getElementById("refresh-python-plugins").addEventListener("click",refreshPythonPlugins);
 async function refreshPythonPlugins(){
  const status=document.getElementById("python-plugins-status"),root=document.getElementById("python-plugins-results");
- const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+ const token=(document.getElementById("nexus-wifi-token").value.trim()||getSavedWifiBridgeToken()||"").trim();
  if(!token){status.textContent="Introduce el token local y guarda la conexión.";return;}
  status.textContent="Consultando registro Python…";root.replaceChildren();
  try{
@@ -665,7 +665,7 @@ async function refreshPythonPlugins(){
  }catch(error){status.textContent="No se pudo consultar plugins: "+error.message;}
 }
 async function launchRegisteredPlugin(pluginId,button,card){
- const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+ const token=(document.getElementById("nexus-wifi-token").value.trim()||getSavedWifiBridgeToken()||"").trim();
  const status=document.getElementById("python-plugins-status");button.disabled=true;button.textContent="Arrancando…";
  try{
   const response=await fetch(getWifiBridgeUrl()+"/api/plugins/launch",{method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({plugin_id:pluginId}),signal:AbortSignal.timeout(35000)});
