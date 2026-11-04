@@ -9,7 +9,7 @@ import tempfile
 import time
 from pathlib import Path
 
-ENGINE_VERSION = "1.3.0"
+ENGINE_VERSION = "1.4.0"
 TOOL_CATALOG = (
     {"id":"wacker","name":"Wacker","commands":("wacker.py","wacker"),"purpose":"Herramienta de auditoría WPA3 conocida por realizar intentos de diccionario online.","risk":"alto","execution":"deshabilitada"},
     {"id":"hostapd_mana","name":"hostapd-mana","commands":("hostapd-mana",),"purpose":"Implementación de punto de acceso de pruebas con capacidades de suplantación y captura.","risk":"alto","execution":"deshabilitada"},
@@ -145,6 +145,52 @@ def _wifi_api_check(timeout=25):
         return {"available": True, "ok": False, "network_count": 0, "source": "error", "command_path": command,
                 "message": "El comando existe, pero su respuesta no es JSON válido o no se pudo ejecutar."}
 
+
+
+def run_tool_module(module_id):
+    """Start a bounded read-only Python diagnostic profile; never invoke third-party attack tools."""
+    profiles = {
+        "wacker": ("WPA3 configuration review", ("Termux:API inventory", "WPA3/SAE capability metadata")),
+        "hostapd_mana": ("Access-point readiness review", ("Wireless interface visibility", "Wireless PHY visibility")),
+        "wifite2": ("Passive Wi-Fi inventory review", ("Termux:API availability", "Current/cached inventory status")),
+        "eaphammer": ("WPA2-Enterprise posture review", ("Enterprise metadata availability", "Wireless interface visibility")),
+    }
+    module_id = str(module_id or "").strip().lower()
+    if module_id not in profiles:
+        raise ValueError("Módulo desconocido.")
+    catalog = next(item for item in TOOL_CATALOG if item["id"] == module_id)
+    detected = _find_tool(catalog["commands"])
+    environment = inspect_environment()
+    wifi = _wifi_api_check(timeout=12)
+    profile, _ = profiles[module_id]
+    checks = []
+    if module_id in ("wacker", "wifite2"):
+        checks.extend([
+            {"name": "Termux:API disponible", "ok": wifi["available"], "detail": wifi["message"]},
+            {"name": "Inventario Wi-Fi", "ok": wifi["network_count"] > 0,
+             "detail": str(wifi["network_count"]) + " redes; origen: " + wifi.get("source", "N/D")},
+        ])
+    else:
+        checks.extend([
+            {"name": "Interfaz inalámbrica visible", "ok": bool(environment["wireless_interfaces_visible"]),
+             "detail": ", ".join(environment["wireless_interfaces_visible"]) or "No visible desde Termux."},
+            {"name": "PHY inalámbrico visible", "ok": environment["wireless_phy_visible"],
+             "detail": "La visibilidad PHY no se deduce del inventario Termux:API."},
+        ])
+    return {
+        "ok": True, "module_id": module_id, "module_name": catalog["name"],
+        "started": True, "mode": "read_only_python_diagnostic", "profile": profile,
+        "checks": checks,
+        "external_tool": {"detected": detected is not None, "command": detected,
+                          "executed": False, "installed_by_nexus": False},
+        "limitations": [
+            "Se ha iniciado el perfil Python de diagnóstico seguro; no el ejecutable ofensivo de terceros.",
+            "No se crean puntos de acceso, no se suplanta ninguna red ni se capturan credenciales o handshakes.",
+            "No se prueban contraseñas, no se desautentican clientes ni se modifica la radio.",
+            "Android/Termux puede no exponer hardware o controladores necesarios para funciones avanzadas.",
+        ],
+    }
+
 def inventory_tools():
     """Read-only catalogue plus actual Python runtime self-tests."""
     tools = []
@@ -155,6 +201,7 @@ def inventory_tools():
             "risk": item["risk"], "execution": item["execution"],
             "detected": detected is not None, "detected_command": detected,
             "status": "detectada; no ejecutada" if detected else "no detectada",
+            "launchable": True, "launch_mode": "diagnóstico Python de solo lectura",
         })
     checks = _python_self_test()
     wifi = _wifi_api_check()

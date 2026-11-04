@@ -171,6 +171,7 @@ footer{color:#62798a;border-color:#d7e4ed}
   <input id="nexus-wifi-token" type="password" placeholder="Opcional; no lo compartas">
   <div class="rowline">
     <button id="save-wifi-bridge" type="button">Guardar dirección</button>
+    <button id="clear-wifi-token" type="button">Olvidar token</button>
     <button id="scan-wifi-live" type="button">Buscar redes reales</button>
   </div>
   <p id="nexus-wifi-status" class="muted" role="status" aria-live="polite">Sin consulta todavía. Los datos de ejemplo no se muestran como resultados reales.</p>
@@ -185,12 +186,24 @@ footer{color:#62798a;border-color:#d7e4ed}
     <div id="local-scan-results"></div>
   </div>
   <section class="panel" id="nexus-python-engine" aria-labelledby="nexus-python-engine-title">
-    <h3 id="nexus-python-engine-title">Motor Python independiente · Autodiagnóstico</h3>
-    <p class="muted">Ejecuta pruebas reales del intérprete Python, lectura/escritura temporal, JSON y comunicación con Termux:API. El catálogo especializado se mantiene en modo informativo.</p>
-    <div class="notice"><strong>Catálogo de laboratorio autorizado</strong><br>Wacker · hostapd-mana · Wifite2 · EAPHammer. Se muestran únicamente como inventario y documentación. No se habilitan captura de credenciales, puntos de acceso fraudulentos, intentos de contraseña ni ataques automáticos.</div>
+    <h3 id="nexus-python-engine-title">Motor Python independiente · Herramientas y módulos</h3>
+    <p class="muted">Ejecuta diagnósticos Python independientes desde esta aplicación. Cada módulo comprueba compatibilidad y datos disponibles en modo de solo lectura.</p>
+    <div class="notice"><strong>Catálogo de laboratorio autorizado</strong><br>Wacker · hostapd-mana · Wifite2 · EAPHammer. Cada botón inicia un perfil Python de diagnóstico seguro. Los ejecutables de terceros se detectan, pero no se lanzan: quedan deshabilitadas la suplantación de puntos de acceso, captura de credenciales, intentos de contraseña y ataques automáticos.</div>
     <div class="audit-actions"><button id="check-python-engine" type="button">Comprobar motor Python</button><button id="export-python-engine" type="button" disabled>Exportar diagnóstico</button></div>
     <p id="python-engine-status" class="muted" role="status" aria-live="polite">Sin comprobación todavía.</p>
     <div id="python-engine-results" aria-live="polite"></div>
+  </section>
+  <section class="panel" id="nexus-python-plugins" aria-labelledby="nexus-python-plugins-title">
+    <h3 id="nexus-python-plugins-title">Python Launcher · Plugins ampliables</h3>
+    <p class="muted">Permite añadir nuevos scripts Python propios en Termux y registrarlos por separado. Cada plugin tiene estado, aprobación explícita y botón de arranque independiente. Solo añade código de confianza: los scripts se ejecutan con los permisos de Termux, no dentro de un sandbox.</p>
+    <div class="audit-actions">
+      <button type="button" id="refresh-python-plugins">Actualizar lista de plugins</button>
+    </div>
+    <p id="python-plugins-status" class="muted" role="status" aria-live="polite">Sin consultar el registro de plugins.</p>
+    <div id="python-plugins-results" aria-live="polite"></div>
+    <details><summary>Cómo añadir un módulo Python</summary>
+      <p class="muted">Carpeta: ~/.nexus-ai/plugins/modules/ · Registro: ~/.nexus-ai/plugins/registry.json. Añade un archivo .py y una entrada JSON con id, name, entrypoint, description y approved:false. Revisa el código antes de cambiar approved a true. No se instala ni ejecuta código descargado automáticamente.</p>
+    </details>
   </section>
   <div id="wifi-networks" aria-live="polite"></div>
 
@@ -447,7 +460,9 @@ const WIFI_BRIDGE_URL_KEY = "nexus_wifi_bridge_url";
 const WIFI_BRIDGE_TOKEN_SESSION_KEY = "nexus_wifi_bridge_token_session";
 let nexusWifiInventory = null;
 const nexusWifiTokenField = document.getElementById("nexus-wifi-token");
+const nexusWifiBridgeField = document.getElementById("nexus-wifi-bridge");
 if(nexusWifiTokenField) nexusWifiTokenField.value = sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY) || "";
+if(nexusWifiBridgeField) nexusWifiBridgeField.value = localStorage.getItem(WIFI_BRIDGE_URL_KEY) || nexusWifiBridgeField.value || "http://127.0.0.1:8766";
 function getWifiBridgeUrl(){
   const field=document.getElementById("nexus-wifi-bridge");
   return (field.value.trim()||"http://127.0.0.1:8766").replace(/\/+$/,"");
@@ -460,6 +475,12 @@ document.getElementById("save-wifi-bridge").addEventListener("click",()=>{
   localStorage.setItem(WIFI_BRIDGE_URL_KEY,value);
   sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token);
   document.getElementById("nexus-wifi-status").textContent="Conexión guardada para esta sesión. El token no se envía a Render.";
+});
+document.getElementById("clear-wifi-token").addEventListener("click",()=>{
+  sessionStorage.removeItem(WIFI_BRIDGE_TOKEN_SESSION_KEY);
+  const field=document.getElementById("nexus-wifi-token");
+  if(field) field.value="";
+  document.getElementById("nexus-wifi-status").textContent="Token de esta sesión eliminado del navegador. Copia el token actual desde Termux y vuelve a guardarlo.";
 });
 document.getElementById("scan-wifi-live").addEventListener("click",scanNexusWifi);
 document.getElementById("export-live-wifi").addEventListener("click",()=>{
@@ -483,6 +504,8 @@ async function scanNexusWifi(){
     const response=await fetch(base+"/api/wifi",{method:"GET",headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:AbortSignal.timeout(18000)});
     let data;
     try{data=await response.json();}catch(_){throw new Error("El puente respondió con un formato no válido (HTTP "+response.status+").");}
+    if(response.status===401)throw new Error("El token guardado en Chrome no coincide con el token que espera Termux. Pulsa «Olvidar token», copia de nuevo el token actual desde Termux, pégalo y pulsa «Guardar dirección».");
+    if(response.status===403)throw new Error(data.error||"El origen de esta página no está autorizado por el puente local.");
     if(!response.ok||data.ok!==true||!Array.isArray(data.networks))throw new Error(data.error||("Respuesta HTTP "+response.status));
     let networks=data.networks;
     let usingPrevious=false;
@@ -556,12 +579,76 @@ async function checkPythonEngine(){
   if(wifi.command_path){const pathNote=document.createElement("p");pathNote.className="muted";pathNote.textContent="Termux:API detectada en: "+wifi.command_path;root.append(pathNote);}
   (diag.checks||[]).forEach(item=>{const card=document.createElement("article");card.className="finding "+(item.ok?"low":"medium");const title=document.createElement("h4");title.textContent=(item.ok?"✓ ":"✕ ")+item.name;card.append(title);root.append(card);});
   const wifiNote=document.createElement("p");wifiNote.className="muted";wifiNote.textContent=wifi.message||"No se recibió diagnóstico Wi-Fi.";root.append(wifiNote);
-  data.tools.forEach(item=>{const card=document.createElement("article");card.className="finding";const title=document.createElement("h4");title.textContent=item.name+" · "+item.status;const desc=document.createElement("p");desc.textContent=item.purpose+" Riesgo operativo: "+item.risk+". Ejecución desde NEXUS: "+item.execution+".";card.append(title,desc);root.append(card);});
+  data.tools.forEach(item=>{
+   const card=document.createElement("article");card.className="finding";
+   const title=document.createElement("h4");title.textContent=item.name+" · "+item.status;
+   const desc=document.createElement("p");desc.textContent=item.purpose+" Modo NEXUS: "+(item.launch_mode||"diagnóstico de solo lectura")+".";
+   const launch=document.createElement("button");launch.type="button";launch.textContent="Iniciar módulo Python";launch.disabled=!item.launchable;
+   launch.addEventListener("click",()=>launchPythonModule(item.id,launch,card));
+   card.append(title,desc,launch);root.append(card);
+  });
   const note=document.createElement("p");note.className="muted";note.textContent=env.hardware_note||"Las capacidades de radio avanzadas no se han probado.";root.append(note);
   status.textContent="Autodiagnóstico Python "+(diag.status||"no disponible")+". "+(diag.checks_passed??0)+" de "+(diag.checks_total??0)+" pruebas correctas. Las herramientas especializadas no se han ejecutado.";
   document.getElementById("export-python-engine").disabled=false;
  }catch(error){status.textContent="No se pudo consultar el motor Python: "+error.message;}
  finally{button.disabled=false;button.textContent="Comprobar motor Python";}
+}
+
+async function launchPythonModule(moduleId,button,card){
+ const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+ const status=document.getElementById("python-engine-status");
+ if(!token){status.textContent="Introduce el token local y guarda la conexión.";return;}
+ button.disabled=true;button.textContent="Iniciando módulo…";
+ try{
+  const response=await fetch(getWifiBridgeUrl()+"/api/tooling/launch",{method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({module_id:moduleId}),signal:AbortSignal.timeout(15000)});
+  const data=await response.json();
+  if(!response.ok||data.started!==true)throw new Error(data.error||("HTTP "+response.status));
+  const result=document.createElement("div");result.className="notice module-run-result";
+  const heading=document.createElement("strong");heading.textContent="Módulo iniciado: "+data.module_name+" · "+data.profile;
+  const summary=document.createElement("p");summary.textContent="Modo: diagnóstico Python de solo lectura. Ejecutable externo: "+(data.external_tool.detected?"detectado, no ejecutado":"no detectado")+".";
+  result.append(heading,summary);
+  (data.checks||[]).forEach(item=>{const line=document.createElement("p");line.textContent=(item.ok?"✓ ":"• ")+item.name+": "+item.detail;result.append(line);});
+  (data.limitations||[]).forEach(item=>{const line=document.createElement("p");line.className="muted";line.textContent=item;result.append(line);});
+  const previous=card.querySelector(".module-run-result");if(previous)previous.remove();
+  card.append(result);status.textContent="Módulo "+data.module_name+" iniciado y diagnóstico completado.";
+  if(latestPythonEngineReport){latestPythonEngineReport.last_module_run=data;latestPythonEngineReport.generated_at=new Date().toISOString();}
+ }catch(error){status.textContent="No se pudo iniciar el módulo Python: "+error.message;}
+ finally{button.disabled=false;button.textContent="Iniciar módulo Python";}
+}
+
+document.getElementById("refresh-python-plugins").addEventListener("click",refreshPythonPlugins);
+async function refreshPythonPlugins(){
+ const status=document.getElementById("python-plugins-status"),root=document.getElementById("python-plugins-results");
+ const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+ if(!token){status.textContent="Introduce el token local y guarda la conexión.";return;}
+ status.textContent="Consultando registro Python…";root.replaceChildren();
+ try{
+  const response=await fetch(getWifiBridgeUrl()+"/api/plugins",{headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:AbortSignal.timeout(12000)});
+  const data=await response.json();if(!response.ok||data.ok!==true||!Array.isArray(data.plugins))throw new Error(data.error||("HTTP "+response.status));
+  if(!data.plugins.length){status.textContent="No hay plugins registrados. Consulta Cómo añadir un módulo Python.";return;}
+  data.plugins.forEach(plugin=>{
+   const card=document.createElement("article");card.className="finding";
+   const heading=document.createElement("h4");heading.textContent=plugin.name+" · "+plugin.status;
+   const description=document.createElement("p");description.textContent=plugin.description+" · Archivo: "+plugin.entrypoint;
+   const button=document.createElement("button");button.type="button";button.textContent="Arrancar plugin Python";
+   button.disabled=!plugin.detected||!plugin.approved;
+   button.addEventListener("click",()=>launchRegisteredPlugin(plugin.id,button,card));
+   card.append(heading,description,button);root.append(card);
+  });
+  status.textContent=data.plugins.length+" plugin(s) en el registro. Solo se pueden arrancar los aprobados y detectados.";
+ }catch(error){status.textContent="No se pudo consultar plugins: "+error.message;}
+}
+async function launchRegisteredPlugin(pluginId,button,card){
+ const token=(document.getElementById("nexus-wifi-token").value.trim()||sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY)||"").trim();
+ const status=document.getElementById("python-plugins-status");button.disabled=true;button.textContent="Arrancando…";
+ try{
+  const response=await fetch(getWifiBridgeUrl()+"/api/plugins/launch",{method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({plugin_id:pluginId}),signal:AbortSignal.timeout(35000)});
+  const data=await response.json();if(!response.ok||data.started!==true)throw new Error(data.error||("HTTP "+response.status));
+  const output=document.createElement("pre");output.className="finding";output.style.whiteSpace="pre-wrap";output.textContent="Código de salida: "+data.returncode+"\n\nSTDOUT:\n"+(data.stdout||"(sin salida)")+"\n\nSTDERR:\n"+(data.stderr||"(sin errores)")+"\n\n"+data.note;
+  const previous=card.querySelector(".plugin-output");if(previous)previous.remove();output.classList.add("plugin-output");card.append(output);
+  status.textContent=data.ok?"Plugin finalizado correctamente.":"Plugin iniciado, pero terminó con error o alcanzó el límite.";
+ }catch(error){status.textContent="No se pudo arrancar el plugin: "+error.message;}
+ finally{button.disabled=false;button.textContent="Arrancar plugin Python";}
 }
 </script>
 
