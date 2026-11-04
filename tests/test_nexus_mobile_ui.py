@@ -33,6 +33,13 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("última lectura válida de esta sesión", self.html)
         self.assertIn("termux-wifi-scaninfo", self.html)
 
+    def test_bridge_token_is_persisted_and_shared_across_actions(self):
+        self.assertIn('const WIFI_BRIDGE_TOKEN_KEY = "nexus_wifi_bridge_token"', self.html)
+        self.assertIn("function getBridgeToken()", self.html)
+        self.assertIn("function persistBridgeToken(token)", self.html)
+        self.assertIn('token=getBridgeToken();', self.html)
+        self.assertIn("safeStorageSet(sessionStorage,WIFI_BRIDGE_URL_KEY,value)", self.html)
+
 
 if __name__ == "__main__":
     unittest.main()
