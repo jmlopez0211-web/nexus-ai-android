@@ -14,7 +14,7 @@ class NexusMobileUiTests(unittest.TestCase):
 
     def test_bridge_token_is_session_scoped_and_sent_as_bearer(self):
         self.assertIn("WIFI_BRIDGE_TOKEN_SESSION_KEY", self.html)
-        self.assertIn("sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", self.html)
+        self.assertIn("safeStorageSet(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", self.html)
         self.assertIn('Authorization:"Bearer "+token', self.html)
         self.assertIn("El token no se envía a Render", self.html)
 
@@ -26,7 +26,7 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("response.status===401", save_handler)
         self.assertIn("response.status===403", save_handler)
         self.assertIn("Conexión NO verificada", save_handler)
-        self.assertIn("sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", save_handler)
+        self.assertIn("persistBridgeToken(token)", save_handler)
 
     def test_wifi_scan_distinguishes_cached_and_empty_results(self):
         self.assertIn("Inventario local recuperado de caché", self.html)
