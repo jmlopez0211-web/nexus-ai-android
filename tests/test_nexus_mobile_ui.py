@@ -38,8 +38,8 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("Token local (se guarda en este navegador", self.html)
 
     def test_bridge_url_validation_regex_is_well_formed(self):
-        self.assertIn(r'if(!/^https?:\\/\\//i.test(value))', self.html)
-        self.assertNotIn(r'if(!/^https?:\\\\/\\\\//i.test(value))', self.html)
+        self.assertIn(r'if(!/^https?:\/\//i.test(value))', self.html)
+        self.assertNotIn(r'if(!/^https?:\\/\\//i.test(value))', self.html)
 
     def test_wifi_scan_distinguishes_cached_and_empty_results(self):
         self.assertIn("Inventario local recuperado de caché", self.html)
