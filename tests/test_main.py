@@ -46,6 +46,7 @@ class MainApiTests(unittest.TestCase):
             response = self.client.post("/api/ask", json={"tarea": "Explica WPA3"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["respuesta"], "Respuesta de prueba")
+        self.assertEqual(client.chat.completions.create.call_args.kwargs["model"], "openai/gpt-oss-120b")
         groq_class.assert_called_once_with(api_key="test-secret")
         client.chat.completions.create.assert_called_once()
 
@@ -71,6 +72,10 @@ class MainApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()["ok"])
         self.assertEqual(response.get_json()["code"], "GROQ_CONNECTED")
+        self.assertEqual(response.get_json()["model"], "openai/gpt-oss-120b")
+        call = groq_class.return_value.chat.completions.create.call_args.kwargs
+        self.assertEqual(call["model"], "openai/gpt-oss-120b")
+        self.assertEqual(call["reasoning_effort"], "low")
 
     @patch("main.Groq")
     def test_ai_check_classifies_invalid_key_without_leaking_details(self, groq_class):
