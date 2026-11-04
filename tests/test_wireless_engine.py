@@ -38,6 +38,30 @@ class WirelessEngineInventoryTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["network_count"], 0)
 
+
+    def test_empty_scan_uses_recent_bridge_cache(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch, Mock
+        with tempfile.TemporaryDirectory() as directory:
+            cache_dir = Path(directory) / ".cache" / "nexus-ai"
+            cache_dir.mkdir(parents=True)
+            (cache_dir / "wifi-inventory.json").write_text(
+                json.dumps({"saved_at": 1000, "networks": [{"ssid": "hidden"}]}),
+                encoding="utf-8",
+            )
+            mock = Mock(returncode=0, stdout="[]", stderr="")
+            with patch.object(engine.Path, "home", return_value=Path(directory)), \
+                 patch.object(engine.time, "time", return_value=1100), \
+                 patch.object(engine.shutil, "which", return_value="/usr/bin/termux-wifi-scaninfo"), \
+                 patch.object(engine.subprocess, "run", return_value=mock):
+                result = engine._wifi_api_check()
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["network_count"], 1)
+        self.assertEqual(result["source"], "cache")
+        self.assertNotIn("hidden", str(result))
+
     def test_python_self_test(self):
         checks = engine._python_self_test()
         self.assertTrue(checks)
