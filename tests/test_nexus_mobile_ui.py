@@ -28,6 +28,13 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("Conexión NO verificada", save_handler)
         self.assertIn("sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", save_handler)
 
+    def test_bridge_token_persists_until_user_forgets_it(self):
+        self.assertIn('const WIFI_BRIDGE_TOKEN_KEY = "nexus_wifi_bridge_token"', self.html)
+        self.assertIn("localStorage.setItem(WIFI_BRIDGE_TOKEN_KEY,token)", self.html)
+        self.assertIn("localStorage.getItem(WIFI_BRIDGE_TOKEN_KEY)", self.html)
+        self.assertIn("localStorage.removeItem(WIFI_BRIDGE_TOKEN_KEY)", self.html)
+        self.assertIn("Token local (se guarda en este navegador", self.html)
+
     def test_wifi_scan_distinguishes_cached_and_empty_results(self):
         self.assertIn("Inventario local recuperado de caché", self.html)
         self.assertIn("última lectura válida de esta sesión", self.html)
