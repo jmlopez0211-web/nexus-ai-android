@@ -40,6 +40,17 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("última lectura válida de esta sesión", self.html)
         self.assertIn("termux-wifi-scaninfo", self.html)
 
+    def test_all_bridge_actions_use_the_shared_token_reader(self):
+        self.assertIn("function getBridgeToken()", self.html)
+        self.assertIn('const target=document.getElementById("nexus-scan-target").value.trim(),token=getBridgeToken();', self.html)
+        self.assertNotIn('token=document.getElementById("nexus-wifi-token").value.trim()', self.html)
+        self.assertIn("function persistBridgeToken(token)", self.html)
+
+    def test_storage_failures_fall_back_to_session_without_aborting_page_init(self):
+        self.assertIn("function safeStorageGet(storage,key)", self.html)
+        self.assertIn("safeStorageSet(sessionStorage,WIFI_BRIDGE_URL_KEY,value)", self.html)
+        self.assertIn('Token guardado "+(tokenStorage==="permanent"?"en este navegador":"solo durante esta sesión")', self.html)
+
 
 if __name__ == "__main__":
     unittest.main()
