@@ -499,7 +499,7 @@ document.getElementById("save-wifi-bridge").addEventListener("click",async()=>{
   const field=document.getElementById("nexus-wifi-token");
   const value=getWifiBridgeUrl();
   const token=(field?.value||"").trim();
-  if(!/^https?:\\/\\//i.test(value)){status.textContent="ERROR: la dirección debe comenzar por http:// o https://.";return;}
+  if(!/^https?:\/\//i.test(value)){status.textContent="ERROR: la dirección debe comenzar por http:// o https://.";return;}
   if(!token){status.textContent="ERROR: falta el token. Pega el token privado de Termux.";field?.focus();return;}
   button.disabled=true;button.textContent="Guardando…";
   status.textContent="Guardando la dirección y el token en este navegador…";
