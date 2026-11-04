@@ -22,9 +22,7 @@ En Termux, dentro de la carpeta del repositorio:
 python nexus_bridge_termux.py
 ```
 
-El proceso escucha exclusivamente en `127.0.0.1:8766` y muestra un token de sesión en la terminal.
-Introduce `http://127.0.0.1:8766` y ese token en el Centro Wi-Fi de NEXUS. No publiques ni reenvíes
-ese puerto. El puente ofrece:
+El proceso escucha exclusivamente en `127.0.0.1:8766`. El token persistente se crea o carga desde `~/.nexus_bridge_token` y no se imprime en pantalla. Para copiarlo al portapapeles de Termux sin mostrarlo, ejecuta `termux-clipboard-set "$(cat ~/.nexus_bridge_token)"`. En NEXUS introduce `http://127.0.0.1:8766`, pega el token y pulsa **Guardar dirección**. El panel guarda primero las credenciales y después verifica la conexión. No publiques ni reenvíes ese puerto. El puente ofrece:
 
 - `GET /api/status`: estado del puente.
 - `GET /api/tooling`: inventario de solo lectura del motor Python, herramientas inalámbricas detectadas y capacidades visibles del entorno.
