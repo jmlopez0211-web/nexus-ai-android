@@ -458,11 +458,22 @@ function clearWifiHistory(){localStorage.removeItem(WIFI_HISTORY_KEY);renderWifi
 <script>
 const WIFI_BRIDGE_URL_KEY = "nexus_wifi_bridge_url";
 const WIFI_BRIDGE_TOKEN_SESSION_KEY = "nexus_wifi_bridge_token_session";
+const WIFI_BRIDGE_TOKEN_KEY = "nexus_wifi_bridge_token";
 let nexusWifiInventory = null;
 const nexusWifiTokenField = document.getElementById("nexus-wifi-token");
 const nexusWifiBridgeField = document.getElementById("nexus-wifi-bridge");
-if(nexusWifiTokenField) nexusWifiTokenField.value = sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY) || "";
-if(nexusWifiBridgeField) nexusWifiBridgeField.value = localStorage.getItem(WIFI_BRIDGE_URL_KEY) || nexusWifiBridgeField.value || "http://127.0.0.1:8766";
+function safeStorageGet(storage,key){try{return storage.getItem(key)||"";}catch(_){return "";}}
+function safeStorageSet(storage,key,value){try{storage.setItem(key,value);return true;}catch(_){return false;}}
+function safeStorageRemove(storage,key){try{storage.removeItem(key);}catch(_){}}
+function getSavedWifiBridgeToken(){return safeStorageGet(localStorage,WIFI_BRIDGE_TOKEN_KEY)||safeStorageGet(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY);}
+function getBridgeToken(){return (nexusWifiTokenField?.value||"").trim()||getSavedWifiBridgeToken();}
+function persistBridgeToken(token){
+ if(safeStorageSet(localStorage,WIFI_BRIDGE_TOKEN_KEY,token)){safeStorageRemove(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY);return "permanent";}
+ if(safeStorageSet(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY,token))return "session";
+ throw new Error("Chrome ha bloqueado el almacenamiento del token. Permite almacenamiento para este sitio y vuelve a guardar.");
+}
+if(nexusWifiTokenField)nexusWifiTokenField.value=getSavedWifiBridgeToken();
+if(nexusWifiBridgeField)nexusWifiBridgeField.value=safeStorageGet(localStorage,WIFI_BRIDGE_URL_KEY)||nexusWifiBridgeField.value||"http://127.0.0.1:8766";
 function getWifiBridgeUrl(){
   const field=document.getElementById("nexus-wifi-bridge");
   return (field.value.trim()||"http://127.0.0.1:8766").replace(/\/+$/,"");
@@ -486,9 +497,10 @@ document.getElementById("save-wifi-bridge").addEventListener("click",async()=>{
     if(response.status===401)throw new Error("HTTP 401: el token pegado no coincide con el que está usando el puente Termux. Copia el token actual y vuelve a probar.");
     if(response.status===403)throw new Error(data.error||"HTTP 403: el origen de NEXUS no está autorizado en el puente.");
     if(!response.ok||data.ok!==true||data.service!=="NEXUS IA local bridge")throw new Error(data.error||("El puente respondió HTTP "+response.status+", pero no se identificó como NEXUS."));
-    localStorage.setItem(WIFI_BRIDGE_URL_KEY,value);
-    sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token);
-    status.textContent="✓ Conexión verificada. Token aceptado por Termux · Wi-Fi API "+(data.wifi_api?"detectada":"no detectada")+" · Caché local: "+(data.cached_networks??0)+" redes. Ahora puedes pulsar «Buscar redes reales».";
+    const urlSaved=safeStorageSet(localStorage,WIFI_BRIDGE_URL_KEY,value)||safeStorageSet(sessionStorage,WIFI_BRIDGE_URL_KEY,value);
+    const tokenStorage=persistBridgeToken(token);
+    if(nexusWifiTokenField)nexusWifiTokenField.value=token;
+    status.textContent="✓ Puente autenticado. Token guardado "+(tokenStorage==="permanent"?"en este navegador":"solo durante esta sesión")+(urlSaved?" y dirección guardada.":".")+" Wi-Fi API "+(data.wifi_api?"detectada":"no detectada")+" · Caché local: "+(data.cached_networks??0)+" redes. Ya puedes buscar redes reales.";
   }catch(error){
     const detail=error.name==="TimeoutError"?"Tiempo de espera agotado: el puente no respondió en 10 segundos.":error.message==="Failed to fetch"?"Chrome no pudo acceder a 127.0.0.1:8766. Comprueba que el puente siga activo y que Chrome permita el acceso a la red local para NEXUS.":error.message;
     status.textContent="Conexión NO verificada: "+detail+" No se ha guardado el token.";
@@ -497,7 +509,8 @@ document.getElementById("save-wifi-bridge").addEventListener("click",async()=>{
   }
 });
 document.getElementById("clear-wifi-token").addEventListener("click",()=>{
-  sessionStorage.removeItem(WIFI_BRIDGE_TOKEN_SESSION_KEY);
+  safeStorageRemove(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY);
+  safeStorageRemove(localStorage,WIFI_BRIDGE_TOKEN_KEY);
   const field=document.getElementById("nexus-wifi-token");
   if(field) field.value="";
   document.getElementById("nexus-wifi-status").textContent="Token de esta sesión eliminado del navegador. Copia el token actual desde Termux y vuelve a guardarlo.";
@@ -741,7 +754,7 @@ document.getElementById("export-local-scan").addEventListener("click",()=>{
 });
 async function scanNexusPorts(){
  const button=document.getElementById("scan-local-host"),status=document.getElementById("local-scan-status"),root=document.getElementById("local-scan-results");
- const target=document.getElementById("nexus-scan-target").value.trim(),token=document.getElementById("nexus-wifi-token").value.trim();
+ const target=document.getElementById("nexus-scan-target").value.trim(),token=getBridgeToken();
  if(!target){status.textContent="Introduce la IP local del equipo.";return;}
  if(!document.getElementById("nexus-scan-authorized").checked){status.textContent="Confirma primero que tienes autorización.";return;}
  if(!token){status.textContent="Introduce el token que muestra nexus_bridge_termux.py al iniciarse.";return;}
