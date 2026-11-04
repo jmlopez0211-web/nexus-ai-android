@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
-from nexus_wireless_engine import inventory_tools, run_tool_module\nfrom nexus_plugin_manager import list_plugins, launch_plugin
+from nexus_wireless_engine import inventory_tools, run_tool_module
+from nexus_plugin_manager import list_plugins, launch_plugin
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
