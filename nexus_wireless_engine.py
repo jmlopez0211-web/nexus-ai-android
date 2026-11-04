@@ -6,9 +6,10 @@ import platform
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
-ENGINE_VERSION = "1.2.0"
+ENGINE_VERSION = "1.3.0"
 TOOL_CATALOG = (
     {"id":"wacker","name":"Wacker","commands":("wacker.py","wacker"),"purpose":"Herramienta de auditoría WPA3 conocida por realizar intentos de diccionario online.","risk":"alto","execution":"deshabilitada"},
     {"id":"hostapd_mana","name":"hostapd-mana","commands":("hostapd-mana",),"purpose":"Implementación de punto de acceso de pruebas con capacidades de suplantación y captura.","risk":"alto","execution":"deshabilitada"},
@@ -100,7 +101,7 @@ def _wifi_api_check(timeout=25):
     if not command:
         return {
             "available": False, "ok": False, "network_count": 0,
-            "command_path": None,
+            "source": "unavailable", "command_path": None,
             "message": "No se encuentra termux-wifi-scaninfo en PATH ni en las rutas habituales de Termux. Comprueba que el puente se ejecuta dentro de Termux.",
         }
     try:
@@ -110,20 +111,38 @@ def _wifi_api_check(timeout=25):
             env["PATH"] = str(Path(prefix) / "bin") + os.pathsep + env.get("PATH", "")
         result = subprocess.run([command], capture_output=True, text=True, timeout=timeout, check=False, env=env)
         if result.returncode != 0:
-            return {"available": True, "ok": False, "network_count": 0, "command_path": command,
-                    "message": "El comando Termux:API existe, pero devolvió un error. Abre Termux:API, revisa permisos de ubicación/dispositivos cercanos y vuelve a probar."}
+            return {"available": True, "ok": False, "network_count": 0, "source": "error", "command_path": command,
+                    "message": "El comando Termux:API existe, pero devolvió un error. Revisa permisos y la aplicación Termux:API."}
         payload = json.loads(result.stdout or "[]")
         if not isinstance(payload, list):
             raise ValueError("Respuesta no válida")
         count = sum(1 for item in payload if isinstance(item, dict))
-        return {"available": True, "ok": True, "network_count": count, "command_path": command,
-                "message": "Termux:API respondió correctamente." if count else
-                "Termux:API respondió, pero Android no entregó redes en esta consulta."}
+        if count:
+            return {"available": True, "ok": True, "network_count": count, "source": "live",
+                    "command_path": command, "message": "Termux:API respondió y entregó redes en esta consulta."}
+
+        # Android puede aplicar limitación de escaneos y devolver [] temporalmente.
+        # Reutiliza únicamente el último inventario no vacío del puente, con TTL.
+        cache_file = Path.home() / ".cache" / "nexus-ai" / "wifi-inventory.json"
+        try:
+            cached = json.loads(cache_file.read_text(encoding="utf-8"))
+            saved_at = float(cached.get("saved_at", 0))
+            networks = cached.get("networks", [])
+            age = max(0, int(time.time() - saved_at))
+            if isinstance(networks, list) and networks and age <= 900:
+                return {"available": True, "ok": True, "network_count": len(networks),
+                        "source": "cache", "cache_age_seconds": age, "command_path": command,
+                        "message": "Android no entregó redes nuevas; se utiliza el último inventario válido guardado por el puente."}
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            pass
+        return {"available": True, "ok": True, "network_count": 0, "source": "live_empty",
+                "command_path": command,
+                "message": "Termux:API respondió, pero Android no entregó redes nuevas y no hay inventario reciente en caché."}
     except subprocess.TimeoutExpired:
-        return {"available": True, "ok": False, "network_count": 0, "command_path": command,
+        return {"available": True, "ok": False, "network_count": 0, "source": "timeout", "command_path": command,
                 "message": "La consulta Wi-Fi superó 25 segundos. Comprueba que Termux:API responde desde la misma sesión."}
     except (OSError, ValueError, json.JSONDecodeError):
-        return {"available": True, "ok": False, "network_count": 0, "command_path": command,
+        return {"available": True, "ok": False, "network_count": 0, "source": "error", "command_path": command,
                 "message": "El comando existe, pero su respuesta no es JSON válido o no se pudo ejecutar."}
 
 def inventory_tools():
