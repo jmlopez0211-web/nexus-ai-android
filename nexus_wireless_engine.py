@@ -200,7 +200,8 @@ def inventory_tools():
             "id": item["id"], "name": item["name"], "purpose": item["purpose"],
             "risk": item["risk"], "execution": item["execution"],
             "detected": detected is not None, "detected_command": detected,
-            "status": "detectada; no ejecutada" if detected else "no detectada",\n            "launchable": True, "launch_mode": "diagnóstico Python de solo lectura",
+            "status": "detectada; no ejecutada" if detected else "no detectada",
+            "launchable": True, "launch_mode": "diagnóstico Python de solo lectura",
         })
     checks = _python_self_test()
     wifi = _wifi_api_check()
