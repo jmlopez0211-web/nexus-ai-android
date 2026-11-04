@@ -487,7 +487,27 @@ function persistBridgeToken(token){
   if(safeStorageSet(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY,token))return "session";
   throw new Error("Chrome ha bloqueado el almacenamiento del token. Permite almacenamiento para este sitio y vuelve a guardar.");
 }
-if(nexusWifiTokenField) nexusWifiTokenField.value = getSavedWifiBridgeToken();
+// Guardado automático: evita perder el token si el usuario recarga sin pulsar Guardar.
+if(nexusWifiTokenField) {
+  nexusWifiTokenField.value = getSavedWifiBridgeToken();
+  nexusWifiTokenField.addEventListener("input", () => {
+    const token = (nexusWifiTokenField.value || "").trim();
+    if (!token) return;
+    try {
+      const storage = persistBridgeToken(token);
+      const status = document.getElementById("nexus-wifi-status");
+      if (status) status.textContent = storage === "permanent"
+        ? "Token guardado automáticamente en este navegador."
+        : "Token guardado solo durante esta sesión; el navegador no permite almacenamiento persistente.";
+    } catch (error) {
+      const status = document.getElementById("nexus-wifi-status");
+      if (status) status.textContent = "No se pudo guardar el token: " + error.message;
+    }
+  });
+  window.addEventListener("pageshow", () => {
+    if (!nexusWifiTokenField.value) nexusWifiTokenField.value = getSavedWifiBridgeToken();
+  });
+}
 if(nexusWifiBridgeField) nexusWifiBridgeField.value = safeStorageGet(localStorage,WIFI_BRIDGE_URL_KEY) || nexusWifiBridgeField.value || "http://127.0.0.1:8766";
 function getWifiBridgeUrl(){
   const field=document.getElementById("nexus-wifi-bridge");
