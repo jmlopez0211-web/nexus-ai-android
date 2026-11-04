@@ -150,7 +150,7 @@ footer{color:#62798a;border-color:#d7e4ed}
 <h2>¿Qué necesitas hacer?</h2>
 <label for="task">Escribe tu tarea</label>
 <textarea id="task" placeholder="Ej.: Explícame cómo proteger mi Wi-Fi..."></textarea>
-<button class="primary" onclick="askNexus()">Analizar solicitud</button>
+<div class="rowline"><button class="primary" onclick="askNexus()">Analizar solicitud</button><button type="button" id="test-ai-connection" onclick="testNexusAI()">Probar conexión IA</button></div>
 <p id="result" role="status" aria-live="polite">Sistema preparado. Selecciona una herramienta o escribe una tarea.</p><p id="api-status" class="muted" role="status" aria-live="polite">Comprobando conexión con NEXUS…</p>
 </section>
 <h2>Centro de operaciones</h2>
@@ -333,6 +333,31 @@ async function comprobarConexion() {
     const header=document.getElementById("header-status"); if(header) header.textContent="● API DISPONIBLE";
   } catch (error) {
     estado.textContent = "IA: no se pudo comprobar la conexión (" + error.message + ").";
+  }
+}
+async function testNexusAI() {
+  const button = document.getElementById("test-ai-connection");
+  const resultado = document.getElementById("result");
+  const estado = document.getElementById("api-status");
+  button.disabled = true;
+  button.textContent = "Probando conexión…";
+  resultado.textContent = "Comprobando comunicación real entre Render y Groq…";
+  try {
+    const response = await fetch("/api/ai-check", {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"});
+    const data = await response.json();
+    if (!response.ok || data.ok !== true) throw new Error(data.error || ("HTTP " + response.status));
+    resultado.textContent = data.message + " Modelo: " + data.model + ".";
+    estado.textContent = "IA: conexión real con Groq verificada correctamente.";
+    const header = document.getElementById("header-status");
+    if (header) header.textContent = "● IA CONECTADA";
+  } catch (error) {
+    resultado.textContent = "Diagnóstico IA: " + error.message;
+    estado.textContent = "La web y el backend pueden estar activos, pero la conexión con Groq no se ha validado.";
+    const header = document.getElementById("header-status");
+    if (header) header.textContent = "● IA SIN CONEXIÓN";
+  } finally {
+    button.disabled = false;
+    button.textContent = "Probar conexión IA";
   }
 }
 async function askNexus() {
