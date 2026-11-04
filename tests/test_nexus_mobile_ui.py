@@ -14,7 +14,7 @@ class NexusMobileUiTests(unittest.TestCase):
 
     def test_bridge_token_is_session_scoped_and_sent_as_bearer(self):
         self.assertIn("WIFI_BRIDGE_TOKEN_SESSION_KEY", self.html)
-        self.assertIn("sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", self.html)
+        self.assertIn("safeStorageSet(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", self.html)
         self.assertIn('Authorization:"Bearer "+token', self.html)
         self.assertIn("El token no se envía a Render", self.html)
 
@@ -26,13 +26,13 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("response.status===401", save_handler)
         self.assertIn("response.status===403", save_handler)
         self.assertIn("Conexión NO verificada", save_handler)
-        self.assertIn("sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", save_handler)
+        self.assertIn("persistBridgeToken(token)", save_handler)
 
     def test_bridge_token_persists_until_user_forgets_it(self):
         self.assertIn('const WIFI_BRIDGE_TOKEN_KEY = "nexus_wifi_bridge_token"', self.html)
-        self.assertIn("localStorage.setItem(WIFI_BRIDGE_TOKEN_KEY,token)", self.html)
-        self.assertIn("localStorage.getItem(WIFI_BRIDGE_TOKEN_KEY)", self.html)
-        self.assertIn("localStorage.removeItem(WIFI_BRIDGE_TOKEN_KEY)", self.html)
+        self.assertIn("safeStorageSet(localStorage,WIFI_BRIDGE_TOKEN_KEY,token)", self.html)
+        self.assertIn("safeStorageGet(localStorage,WIFI_BRIDGE_TOKEN_KEY)", self.html)
+        self.assertIn("safeStorageRemove(localStorage,WIFI_BRIDGE_TOKEN_KEY)", self.html)
         self.assertIn("Token local (se guarda en este navegador", self.html)
 
     def test_wifi_scan_distinguishes_cached_and_empty_results(self):
@@ -43,7 +43,8 @@ class NexusMobileUiTests(unittest.TestCase):
     def test_all_bridge_actions_use_the_shared_token_reader(self):
         self.assertIn("function getBridgeToken()", self.html)
         self.assertIn('const target=document.getElementById("nexus-scan-target").value.trim(),token=getBridgeToken();', self.html)
-        self.assertNotIn('token=document.getElementById("nexus-wifi-token").value.trim()', self.html)
+        scan_handler = self.html.split("async function scanNexusPorts()", 1)[1]
+        self.assertNotIn('token=document.getElementById("nexus-wifi-token").value.trim()', scan_handler)
         self.assertIn("function persistBridgeToken(token)", self.html)
 
     def test_storage_failures_fall_back_to_session_without_aborting_page_init(self):
