@@ -51,12 +51,48 @@ def auditar_web():
         return jsonify({"error": "La auditoría no pudo completarse. Revisa los registros del servidor."}), 500
 
 
+def _groq_error_response(exc):
+    """Safe provider diagnosis; never expose secrets or raw upstream details."""
+    status = getattr(exc, "status_code", None)
+    if status in (401, 403):
+        return jsonify({"ok": False, "code": "GROQ_AUTH", "error": "Groq ha rechazado la clave. Revisa GROQ_API_KEY en las variables de entorno de Render."}), 502
+    if status == 429:
+        return jsonify({"ok": False, "code": "GROQ_RATE_LIMIT", "error": "Groq ha limitado temporalmente las solicitudes. Espera y vuelve a probar."}), 503
+    if status in (400, 404, 422):
+        return jsonify({"ok": False, "code": "GROQ_REQUEST", "error": "Groq ha rechazado la solicitud o el modelo configurado. Revisa el modelo y la configuración."}), 502
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return jsonify({"ok": False, "code": "GROQ_NETWORK", "error": "No se pudo establecer comunicación con Groq. Comprueba la salida de red del servicio Render."}), 502
+    app.logger.exception("Error consultando el modelo de IA")
+    return jsonify({"ok": False, "code": "GROQ_UPSTREAM", "error": "Groq no ha completado la solicitud. Consulta los registros de Render; no compartas la clave."}), 502
+
+
+@app.post("/api/ai-check")
+def comprobar_ia():
+    clave = os.environ.get("GROQ_API_KEY")
+    if not clave:
+        return jsonify({"ok": False, "code": "MISSING_API_KEY", "error": "Falta configurar GROQ_API_KEY en Render."}), 503
+    try:
+        cliente = Groq(api_key=clave, timeout=15.0, max_retries=0)
+        respuesta = cliente.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": "Responde únicamente: NEXUS_OK"}],
+            temperature=0,
+            max_tokens=8
+        )
+        texto = respuesta.choices[0].message.content or ""
+        if "NEXUS_OK" not in texto:
+            return jsonify({"ok": False, "code": "UNEXPECTED_RESPONSE", "error": "Groq respondió, pero el resultado de prueba no fue el esperado."}), 502
+        return jsonify({"ok": True, "code": "GROQ_CONNECTED", "message": "Conexión real con Groq confirmada.", "model": "llama-3.3-70b-versatile"})
+    except Exception as exc:
+        return _groq_error_response(exc)
+
+
 @app.post("/api/ia")
 @app.post("/api/ask")
 def consultar_ia():
     clave = os.environ.get("GROQ_API_KEY")
     if not clave:
-        return jsonify({"error": "Falta configurar GROQ_API_KEY en el servidor."}), 503
+        return jsonify({"error": "Falta configurar GROQ_API_KEY en el servidor.", "code": "MISSING_API_KEY"}), 503
 
     datos = request.get_json(silent=True) or {}
     tarea = str(datos.get("tarea", "")).strip()
@@ -86,11 +122,8 @@ def consultar_ia():
         )
         texto = respuesta.choices[0].message.content
         return jsonify({"respuesta": texto})
-    except Exception:
-        app.logger.exception("Error consultando el modelo de IA")
-        return jsonify({
-            "error": "No se pudo consultar la IA. Revisa la clave y los registros del servidor."
-        }), 502
+    except Exception as exc:
+        return _groq_error_response(exc)
 
 
 if __name__ == "__main__":
