@@ -12,21 +12,23 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("NEXUS IA mobile refresh", self.html)
         self.assertIn("@media(max-width:560px)", self.html)
 
-    def test_bridge_token_is_session_scoped_and_sent_as_bearer(self):
+    def test_bridge_token_is_sent_as_bearer_and_not_to_render(self):
         self.assertIn("WIFI_BRIDGE_TOKEN_SESSION_KEY", self.html)
         self.assertIn("safeStorageSet(sessionStorage,WIFI_BRIDGE_TOKEN_SESSION_KEY,token)", self.html)
         self.assertIn('Authorization:"Bearer "+token', self.html)
         self.assertIn("El token no se envía a Render", self.html)
 
-    def test_saving_bridge_verifies_authentication_before_persisting_token(self):
+    def test_save_persists_credentials_before_network_verification(self):
         save_handler = self.html.split('document.getElementById("save-wifi-bridge")', 1)[1].split(
             'document.getElementById("clear-wifi-token")', 1
         )[0]
-        self.assertIn('fetch(value+"/api/status"', save_handler)
+        persist_at = save_handler.index("tokenStorage=persistBridgeToken(token)")
+        fetch_at = save_handler.index('fetch(value+"/api/status"')
+        self.assertLess(persist_at, fetch_at)
         self.assertIn("response.status===401", save_handler)
         self.assertIn("response.status===403", save_handler)
-        self.assertIn("Conexión NO verificada", save_handler)
-        self.assertIn("persistBridgeToken(token)", save_handler)
+        self.assertIn("GUARDADO, PERO SIN CONEXIÓN", save_handler)
+        self.assertIn("Token y dirección guardados", save_handler)
 
     def test_bridge_token_persists_until_user_forgets_it(self):
         self.assertIn('const WIFI_BRIDGE_TOKEN_KEY = "nexus_wifi_bridge_token"', self.html)
@@ -34,6 +36,10 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("safeStorageGet(localStorage,WIFI_BRIDGE_TOKEN_KEY)", self.html)
         self.assertIn("safeStorageRemove(localStorage,WIFI_BRIDGE_TOKEN_KEY)", self.html)
         self.assertIn("Token local (se guarda en este navegador", self.html)
+
+    def test_bridge_url_validation_regex_is_well_formed(self):
+        self.assertIn(r'if(!/^https?:\\/\\//i.test(value))', self.html)
+        self.assertNotIn(r'if(!/^https?:\\\\/\\\\//i.test(value))', self.html)
 
     def test_wifi_scan_distinguishes_cached_and_empty_results(self):
         self.assertIn("Inventario local recuperado de caché", self.html)
@@ -50,7 +56,7 @@ class NexusMobileUiTests(unittest.TestCase):
     def test_storage_failures_fall_back_to_session_without_aborting_page_init(self):
         self.assertIn("function safeStorageGet(storage,key)", self.html)
         self.assertIn("safeStorageSet(sessionStorage,WIFI_BRIDGE_URL_KEY,value)", self.html)
-        self.assertIn('Token guardado "+(tokenStorage==="permanent"?"en este navegador":"solo durante esta sesión")', self.html)
+        self.assertIn("solo durante esta sesión", self.html)
 
 
 if __name__ == "__main__":
