@@ -185,8 +185,8 @@ footer{color:#62798a;border-color:#d7e4ed}
     <div id="local-scan-results"></div>
   </div>
   <section class="panel" id="nexus-python-engine" aria-labelledby="nexus-python-engine-title">
-    <h3 id="nexus-python-engine-title">Motor Python independiente · Inventario de herramientas</h3>
-    <p class="muted">Comprueba desde Termux qué utilidades están presentes y qué capacidades de hardware expone Android. Esta consulta es de solo lectura: no instala ni ejecuta herramientas de auditoría inalámbrica.</p>
+    <h3 id="nexus-python-engine-title">Motor Python independiente · Autodiagnóstico</h3>
+    <p class="muted">Ejecuta pruebas reales del intérprete Python, lectura/escritura temporal, JSON y comunicación con Termux:API. El catálogo especializado se mantiene en modo informativo.</p>
     <div class="notice"><strong>Catálogo de laboratorio autorizado</strong><br>Wacker · hostapd-mana · Wifite2 · EAPHammer. Se muestran únicamente como inventario y documentación. No se habilitan captura de credenciales, puntos de acceso fraudulentos, intentos de contraseña ni ataques automáticos.</div>
     <div class="audit-actions"><button id="check-python-engine" type="button">Comprobar motor Python</button><button id="export-python-engine" type="button" disabled>Exportar diagnóstico</button></div>
     <p id="python-engine-status" class="muted" role="status" aria-live="polite">Sin comprobación todavía.</p>
@@ -549,11 +549,14 @@ async function checkPythonEngine(){
   const data=await response.json();
   if(!response.ok||data.ok!==true||!Array.isArray(data.tools))throw new Error(data.error||("Respuesta HTTP "+response.status));
   latestPythonEngineReport={...data,generated_at:new Date().toISOString()};
-  const env=data.environment||{},summary=document.createElement("p");summary.className="muted";
-  summary.textContent="Python "+(env.python_version||"N/D")+" · Arquitectura "+(env.machine||"N/D")+" · Termux:API "+(env.termux_api_cli?"disponible":"no detectada")+" · Interfaces Wi-Fi visibles: "+((env.wireless_interfaces_visible||[]).join(", ")||"ninguna");root.append(summary);
+  const env=data.environment||{},diag=data.runtime_diagnostic||{},wifi=diag.wifi_api||{};
+  const summary=document.createElement("p");summary.className="muted";
+  summary.textContent="Python "+(env.python_version||"N/D")+" · Arquitectura "+(env.machine||"N/D")+" · Pruebas Python "+(diag.checks_passed??0)+"/"+(diag.checks_total??0)+" · Termux:API "+(wifi.available?"disponible":"no detectada")+" · Redes en prueba: "+(wifi.network_count??0);root.append(summary);
+  (diag.checks||[]).forEach(item=>{const card=document.createElement("article");card.className="finding "+(item.ok?"low":"medium");const title=document.createElement("h4");title.textContent=(item.ok?"✓ ":"✕ ")+item.name;card.append(title);root.append(card);});
+  const wifiNote=document.createElement("p");wifiNote.className="muted";wifiNote.textContent=wifi.message||"No se recibió diagnóstico Wi-Fi.";root.append(wifiNote);
   data.tools.forEach(item=>{const card=document.createElement("article");card.className="finding";const title=document.createElement("h4");title.textContent=item.name+" · "+item.status;const desc=document.createElement("p");desc.textContent=item.purpose+" Riesgo operativo: "+item.risk+". Ejecución desde NEXUS: "+item.execution+".";card.append(title,desc);root.append(card);});
-  const note=document.createElement("p");note.className="muted";note.textContent=env.hardware_note||"Modo monitor e inyección no comprobados.";root.append(note);
-  status.textContent="Inventario completado. "+data.tools.filter(x=>x.detected).length+" de "+data.tools.length+" herramientas detectadas. Ninguna se ha ejecutado.";
+  const note=document.createElement("p");note.className="muted";note.textContent=env.hardware_note||"Las capacidades de radio avanzadas no se han probado.";root.append(note);
+  status.textContent="Autodiagnóstico Python "+(diag.status||"no disponible")+". "+(diag.checks_passed??0)+" de "+(diag.checks_total??0)+" pruebas correctas. Las herramientas especializadas no se han ejecutado.";
   document.getElementById("export-python-engine").disabled=false;
  }catch(error){status.textContent="No se pudo consultar el motor Python: "+error.message;}
  finally{button.disabled=false;button.textContent="Comprobar motor Python";}
