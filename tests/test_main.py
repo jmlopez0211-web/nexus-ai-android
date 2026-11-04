@@ -59,6 +59,30 @@ class MainApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 502)
         self.assertNotIn("private provider diagnostic", response.get_data(as_text=True))
 
+    @patch("main.Groq")
+    def test_ai_check_confirms_provider_response(self, groq_class):
+        message = Mock()
+        message.content = "NEXUS_OK"
+        completion = Mock()
+        completion.choices = [Mock(message=message)]
+        groq_class.return_value.chat.completions.create.return_value = completion
+        with patch.dict(os.environ, {"GROQ_API_KEY": "test-secret"}):
+            response = self.client.post("/api/ai-check", json={})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()["ok"])
+        self.assertEqual(response.get_json()["code"], "GROQ_CONNECTED")
+
+    @patch("main.Groq")
+    def test_ai_check_classifies_invalid_key_without_leaking_details(self, groq_class):
+        error = RuntimeError("private provider detail")
+        error.status_code = 401
+        groq_class.return_value.chat.completions.create.side_effect = error
+        with patch.dict(os.environ, {"GROQ_API_KEY": "test-secret"}):
+            response = self.client.post("/api/ai-check", json={})
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.get_json()["code"], "GROQ_AUTH")
+        self.assertNotIn("private provider detail", response.get_data(as_text=True))
+
 
 if __name__ == "__main__":
     unittest.main()
