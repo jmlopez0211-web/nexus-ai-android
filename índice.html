@@ -171,6 +171,7 @@ footer{color:#62798a;border-color:#d7e4ed}
   <input id="nexus-wifi-token" type="password" placeholder="Opcional; no lo compartas">
   <div class="rowline">
     <button id="save-wifi-bridge" type="button">Guardar dirección</button>
+    <button id="clear-wifi-token" type="button">Olvidar token</button>
     <button id="scan-wifi-live" type="button">Buscar redes reales</button>
   </div>
   <p id="nexus-wifi-status" class="muted" role="status" aria-live="polite">Sin consulta todavía. Los datos de ejemplo no se muestran como resultados reales.</p>
@@ -459,7 +460,9 @@ const WIFI_BRIDGE_URL_KEY = "nexus_wifi_bridge_url";
 const WIFI_BRIDGE_TOKEN_SESSION_KEY = "nexus_wifi_bridge_token_session";
 let nexusWifiInventory = null;
 const nexusWifiTokenField = document.getElementById("nexus-wifi-token");
+const nexusWifiBridgeField = document.getElementById("nexus-wifi-bridge");
 if(nexusWifiTokenField) nexusWifiTokenField.value = sessionStorage.getItem(WIFI_BRIDGE_TOKEN_SESSION_KEY) || "";
+if(nexusWifiBridgeField) nexusWifiBridgeField.value = localStorage.getItem(WIFI_BRIDGE_URL_KEY) || nexusWifiBridgeField.value || "http://127.0.0.1:8766";
 function getWifiBridgeUrl(){
   const field=document.getElementById("nexus-wifi-bridge");
   return (field.value.trim()||"http://127.0.0.1:8766").replace(/\/+$/,"");
@@ -472,6 +475,12 @@ document.getElementById("save-wifi-bridge").addEventListener("click",()=>{
   localStorage.setItem(WIFI_BRIDGE_URL_KEY,value);
   sessionStorage.setItem(WIFI_BRIDGE_TOKEN_SESSION_KEY,token);
   document.getElementById("nexus-wifi-status").textContent="Conexión guardada para esta sesión. El token no se envía a Render.";
+});
+document.getElementById("clear-wifi-token").addEventListener("click",()=>{
+  sessionStorage.removeItem(WIFI_BRIDGE_TOKEN_SESSION_KEY);
+  const field=document.getElementById("nexus-wifi-token");
+  if(field) field.value="";
+  document.getElementById("nexus-wifi-status").textContent="Token de esta sesión eliminado del navegador. Copia el token actual desde Termux y vuelve a guardarlo.";
 });
 document.getElementById("scan-wifi-live").addEventListener("click",scanNexusWifi);
 document.getElementById("export-live-wifi").addEventListener("click",()=>{
@@ -495,6 +504,8 @@ async function scanNexusWifi(){
     const response=await fetch(base+"/api/wifi",{method:"GET",headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:AbortSignal.timeout(18000)});
     let data;
     try{data=await response.json();}catch(_){throw new Error("El puente respondió con un formato no válido (HTTP "+response.status+").");}
+    if(response.status===401)throw new Error("El token guardado en Chrome no coincide con el token que espera Termux. Pulsa «Olvidar token», copia de nuevo el token actual desde Termux, pégalo y pulsa «Guardar dirección».");
+    if(response.status===403)throw new Error(data.error||"El origen de esta página no está autorizado por el puente local.");
     if(!response.ok||data.ok!==true||!Array.isArray(data.networks))throw new Error(data.error||("Respuesta HTTP "+response.status));
     let networks=data.networks;
     let usingPrevious=false;
