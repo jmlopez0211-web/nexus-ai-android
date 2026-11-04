@@ -496,29 +496,38 @@ function getWifiBridgeUrl(){
 document.getElementById("save-wifi-bridge").addEventListener("click",async()=>{
   const button=document.getElementById("save-wifi-bridge");
   const status=document.getElementById("nexus-wifi-status");
+  const field=document.getElementById("nexus-wifi-token");
   const value=getWifiBridgeUrl();
-  const token=document.getElementById("nexus-wifi-token").value.trim();
-  if(!/^https?:\\/\\//i.test(value)){status.textContent="Dirección no válida: debe comenzar por http:// o https://.";return;}
-  if(!token){status.textContent="Falta el token local. Pégalo desde Termux.";return;}
-  button.disabled=true;button.textContent="Verificando…";
-  status.textContent="Probando autenticación y acceso del navegador al puente local…";
+  const token=(field?.value||"").trim();
+  if(!/^https?:\\/\\//i.test(value)){status.textContent="ERROR: la dirección debe comenzar por http:// o https://.";return;}
+  if(!token){status.textContent="ERROR: falta el token. Pega el token privado de Termux.";field?.focus();return;}
+  button.disabled=true;button.textContent="Guardando…";
+  status.textContent="Guardando la dirección y el token en este navegador…";
+  let tokenStorage="",urlSaved=false;
   try{
-    const response=await fetch(value+"/api/status",{
-      method:"GET",headers:{Authorization:"Bearer "+token},
-      cache:"no-store",mode:"cors",signal:AbortSignal.timeout(10000)
-    });
-    let data={};
-    try{data=await response.json();}catch(_){}
-    if(response.status===401)throw new Error("HTTP 401: el token pegado no coincide con el que está usando el puente Termux. Copia el token actual y vuelve a probar.");
-    if(response.status===403)throw new Error(data.error||"HTTP 403: el origen de NEXUS no está autorizado en el puente.");
-    if(!response.ok||data.ok!==true||data.service!=="NEXUS IA local bridge")throw new Error(data.error||("El puente respondió HTTP "+response.status+", pero no se identificó como NEXUS."));
-    const urlSaved=safeStorageSet(localStorage,WIFI_BRIDGE_URL_KEY,value)||safeStorageSet(sessionStorage,WIFI_BRIDGE_URL_KEY,value);
-    const tokenStorage=persistBridgeToken(token);
-    if(nexusWifiTokenField)nexusWifiTokenField.value=token;
-    status.textContent="✓ Puente autenticado. Token guardado "+(tokenStorage==="permanent"?"en este navegador":"solo durante esta sesión")+(urlSaved?" y dirección guardada.":".")+" Wi-Fi API "+(data.wifi_api?"detectada":"no detectada")+" · Caché local: "+(data.cached_networks??0)+" redes. Ya puedes buscar redes reales.";
+    urlSaved=safeStorageSet(localStorage,WIFI_BRIDGE_URL_KEY,value)||safeStorageSet(sessionStorage,WIFI_BRIDGE_URL_KEY,value);
+    tokenStorage=persistBridgeToken(token);
+    if(field)field.value=token;
+    status.textContent="Token y dirección guardados "+(tokenStorage==="permanent"?"de forma persistente":"solo durante esta sesión")+". Comprobando ahora el puente Termux…";
+  }catch(storageError){
+    status.textContent="ERROR DE ALMACENAMIENTO: "+storageError.message;
+    button.disabled=false;button.textContent="Guardar dirección";return;
+  }
+  try{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),10000);
+    let response;
+    try{
+      response=await fetch(value+"/api/status",{method:"GET",headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:controller.signal});
+    }finally{clearTimeout(timeout);}
+    let data={};try{data=await response.json();}catch(_){}
+    if(response.status===401)throw new Error("HTTP 401: el token guardado no coincide con el token activo en Termux.");
+    if(response.status===403)throw new Error(data.error||"HTTP 403: el origen de NEXUS no está autorizado.");
+    if(!response.ok||data.ok!==true||data.service!=="NEXUS IA local bridge")throw new Error(data.error||("Respuesta HTTP "+response.status+" no reconocida."));
+    status.textContent="✓ CONECTADO. Token y dirección guardados. Termux:API "+(data.wifi_api?"disponible":"no detectada")+" · "+(data.cached_networks??0)+" redes en caché. Ya puedes buscar redes reales.";
   }catch(error){
-    const detail=error.name==="TimeoutError"?"Tiempo de espera agotado: el puente no respondió en 10 segundos.":error.message==="Failed to fetch"?"Chrome no pudo acceder a 127.0.0.1:8766. Comprueba que el puente siga activo y que Chrome permita el acceso a la red local para NEXUS.":error.message;
-    status.textContent="Conexión NO verificada: "+detail+" No se ha guardado el token.";
+    const detail=error.name==="AbortError"?"El puente no respondió en 10 segundos.":error.message==="Failed to fetch"?"Chrome bloqueó el acceso a 127.0.0.1. Revisa el permiso de red local de la aplicación.":error.message;
+    status.textContent="GUARDADO, PERO SIN CONEXIÓN: "+detail+" El token permanece guardado; no necesitas volver a pegarlo.";
   }finally{
     button.disabled=false;button.textContent="Guardar dirección";
   }
