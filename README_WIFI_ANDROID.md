@@ -1,24 +1,54 @@
 # NEXUS IA — conexión Wi-Fi local con Termux
 
-Este puente permite que el botón Wi-Fi de NEXUS IA consulte el inventario de redes que devuelve Termux:API en el mismo teléfono Android.
+Esta guía corresponde al puente actual del repositorio: `nexus_bridge_termux.py`, puerto `8766`. No uses el puente heredado `nexus_wifi_bridge.py` ni el puerto antiguo `8765` para esta versión de NEXUS.
 
 ## Requisitos
-- Android con Termux y Termux:API instalados desde fuentes compatibles entre sí.
-- En Termux: `pkg install python termux-api`.
-- Permisos de Android para Termux:API; la disponibilidad del escaneo depende de la versión de Android, permisos y restricciones del fabricante.
 
-## Arranque
-1. Copia `nexus_wifi_bridge.py` en Termux.
-2. (Recomendado) Define un token local: `export NEXUS_WIFI_TOKEN='elige-un-token-largo'`.
-3. Inicia: `python nexus_wifi_bridge.py`.
-4. En NEXUS IA abre **Wi-Fi seguro**, deja la dirección `http://127.0.0.1:8765`, introduce el token si configuraste uno y pulsa **Buscar redes reales**.
+- Termux y Termux:API instalados desde fuentes compatibles.
+- Python y el paquete cliente Termux:API:
+  ```bash
+  pkg install python termux-api
+  ```
+- Permisos de Android para Termux:API y ubicación/Wi-Fi cuando Android los solicite.
 
-La web NEXUS alojada en Render debe poder acceder al loopback del teléfono desde el navegador. Chrome puede aplicar controles adicionales de acceso a red local; si el navegador lo bloquea, utiliza la interfaz PWA servida localmente en el mismo teléfono o revisa el permiso que muestre el navegador.
+## Arranque y autenticación
+
+Desde la carpeta del repositorio en Termux:
+
+```bash
+cd ~/nexus-ai-android
+python nexus_bridge_termux.py
+```
+
+El servidor escucha solo en `127.0.0.1:8766`. Si aparece `Address already in use`, no inicies otra instancia: comprueba la instancia existente con:
+
+```curl -i --max-time 3 http://127.0.0.1:8766/api/status```
+
+Un `401 Unauthorized` sin encabezado Authorization confirma que el servidor responde y exige autenticación; no indica que esté caído.
+
+El token persistente se lee de `~/.nexus_bridge_token`. No se muestra ni se debe publicar. Para copiarlo directamente al portapapeles de Termux sin imprimirlo:
+
+```bash
+termux-clipboard-set "$(cat ~/.nexus_bridge_token)"
+```
+
+En NEXUS IA abre **Centro de auditoría Wi-Fi**, conserva la dirección `http://127.0.0.1:8766`, pega el token y pulsa **Guardar dirección**. El panel guarda las credenciales localmente antes de comprobar la conexión. No pulses «Olvidar token» salvo que quieras eliminarlo del navegador.
+
+## Diagnóstico
+
+Consulta autenticada desde Termux:
+
+```bash
+curl -i -H "Authorization: Bearer $(cat ~/.nexus_bridge_token)" \
+  http://127.0.0.1:8766/api/status
+```
+
+La respuesta esperada es `HTTP 200` con `"ok": true`. La prueba CORS previa desde el origen Render debe responder `204` e incluir `Access-Control-Allow-Origin`, `Access-Control-Allow-Headers: Authorization, Content-Type` y `Access-Control-Allow-Private-Network: true`.
 
 ## Seguridad y límites
-- El servidor escucha exclusivamente en `127.0.0.1`; no cambies HOST a `0.0.0.0`, no reenvíes el puerto y no lo publiques.
-- La lista CORS contiene el origen de NEXUS y los orígenes localhost habituales. Puedes añadir otros orígenes exactos con `NEXUS_WIFI_ALLOWED_ORIGINS` separados por comas.
-- El token es opcional, pero se recomienda configurarlo. No lo compartas ni lo incluyas en repositorios.
-- Solo ofrece inventario de redes anunciado por Termux:API. No recupera, prueba ni almacena contraseñas Wi-Fi.
-- El botón exporta el inventario recibido; los resultados no son una auditoría completa de vulnerabilidades.
-- La detección automática de aplicaciones instaladas y el acceso a funciones Android protegidas requieren una app Android nativa con permisos explícitos.
+
+- El servidor escucha exclusivamente en loopback. No cambies HOST a `0.0.0.0`, no reenvíes el puerto y no lo publiques en Internet.
+- El token se envía solo al puente local mediante `Authorization: Bearer`; no lo incluyas en capturas, informes ni repositorios.
+- El inventario Wi-Fi depende de Termux:API, permisos de Android y las restricciones de escaneo del fabricante. La caché puede mostrar la última lectura válida si Android limita una consulta nueva.
+- El escaneo TCP se limita a una única IPv4 privada y requiere confirmación de autorización. No recorre subredes, no prueba contraseñas ni identifica versiones o vulnerabilidades.
+- Los módulos de herramientas inalámbricas se diagnostican en modo de solo lectura; no se ejecutan herramientas de captura, suplantación ni recuperación de claves.
