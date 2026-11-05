@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "NEXUS AI",
+  "short_name": "NEXUS",
+  "description": "Panel de diagnóstico y auditoría defensiva para redes propias.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f2f7fb",
+  "theme_color": "#087f73",
+  "categories": ["utilities", "security"],
+  "icons": [
+    {
+      "src": "/icons/nexus-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
