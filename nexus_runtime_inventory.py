@@ -71,6 +71,7 @@ TOOLS = (
     ("ospd-openvas", "OpenVAS Scanner", ("ospd-openvas",), "Escáner Greenbone; detección solamente"),
     ("wapiti", "Wapiti", ("wapiti",), "Auditoría web; detección solamente"),
     ("termux-api", "Termux:API Wi-Fi", ("termux-wifi-scaninfo",), "Lectura de resultados Wi-Fi Android"),
+    ("proot-distro", "Proot Distro", ("proot-distro",), "Entornos Linux aislados en Android"),
     ("git", "Git", ("git",), "Control de versiones"),
 )
 
@@ -146,6 +147,35 @@ def _read_plugin_registry():
         return {"registry_managed_by": "nexus_plugin_manager", "registry_path": str(registry),
                 "execution_requires_approval": True, "items": [], "error": "registro_no_legible"}
 
+def _installed_python_distributions():
+    packages = []
+    try:
+        for dist in importlib.metadata.distributions():
+            name = (dist.metadata.get("Name") or "unknown").strip()
+            packages.append({"name": name, "version": str(dist.version)})
+    except (OSError, ValueError, importlib.metadata.PackageNotFoundError):
+        pass
+    packages.sort(key=lambda item: item["name"].casefold())
+    return packages[:1000]
+
+def _proot_environments():
+    prefix = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr"))
+    rootfs = prefix / "var" / "lib" / "proot-distro" / "installed-rootfs"
+    environments = []
+    try:
+        entries = sorted((item for item in rootfs.iterdir() if item.is_dir()), key=lambda item: item.name)
+    except OSError:
+        return environments
+    for distro in entries:
+        candidates = (distro / "usr" / "bin" / "python3", distro / "usr" / "bin" / "python",
+                      distro / "usr" / "local" / "bin" / "python3")
+        interpreter = next((item for item in candidates if item.is_file()), None)
+        environments.append({"name": distro.name, "installed": True,
+                             "python_found": interpreter is not None,
+                             "python_path_in_rootfs": str(interpreter) if interpreter else None,
+                             "execution_verified": False,
+                             "note": "Intérprete detectado en el rootfs; no se ha iniciado el contenedor."})
+    return environments
 def inventory():
     runtimes = []
     for key, name, commands, purpose in RUNTIMES:
@@ -212,6 +242,8 @@ def inventory():
             "termux": "com.termux" in os.environ.get("PREFIX", ""),
         },
         "runtimes": runtimes, "sql_engines": sql, "tools": tools,
+        "python_packages": _installed_python_distributions(),
+        "proot_environments": _proot_environments(),
         "internal_modules": modules, "python_modules": _python_packages(),
         "plugins": _read_plugin_registry(),
         "policy": {
