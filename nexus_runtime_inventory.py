@@ -323,10 +323,10 @@ def run_runtime_check(runtime_id, confirmed=False):
     checks = {
         "python": (sys.executable, ["-c", "import json,sqlite3; print('PYTHON_OK', json.dumps({'sqlite': sqlite3.sqlite_version}))"]),
         "node": ("node", ["-e", "console.log('NODE_OK')"]),
-        "bash": ("bash", ["-c", "printf 'BASH_OK\\n'"]),
-        "php": ("php", ["-r", "echo \"PHP_OK\\n\";"]),
+        "bash": ("bash", ["-c", "printf 'BASH_OK\n'"]),
+        "php": ("php", ["-r", "echo \"PHP_OK\n\";"]),
         "ruby": ("ruby", ["-e", "puts 'RUBY_OK'"]),
-        "perl": ("perl", ["-e", "print \"PERL_OK\\n\";"]),
+        "perl": ("perl", ["-e", "print \"PERL_OK\n\";"]),
         "lua": ("lua", ["-e", "print('LUA_OK')"]),
         "java": ("java", ["-version"]),
         "r": ("R", ["--version"]),
@@ -359,7 +359,8 @@ def run_runtime_check(runtime_id, confirmed=False):
     if runtime_id not in checks:
         raise ValueError("Motor no autorizado para prueba.")
     executable, args = checks[runtime_id]
-    path = shutil.which(executable) if executable != sys.executable else executable
+    path = (_which(("clang", "gcc")) if runtime_id == "c-compiler"
+            else (shutil.which(executable) if executable != sys.executable else executable))
     if not path:
         return {"ok": False, "id": runtime_id, "status": "not_installed"}
     try:
@@ -420,7 +421,7 @@ def repair_missing_dependencies(confirmed=False):
             "installed": [module for module, _ in missing if module not in unresolved],
             "unresolved": unresolved,
             "returncode": result.returncode,
-            "output": ((result.stdout or "") + "\\n" + (result.stderr or ""))[-4000:],
+            "output": ((result.stdout or "") + "\n" + (result.stderr or ""))[-4000:],
             "note": "Solo se solicitaron dependencias NEXUS ausentes; no se actualizaron paquetes que ya estaban presentes de forma deliberada.",
             "diagnostics_after": diagnostics(),
         }
