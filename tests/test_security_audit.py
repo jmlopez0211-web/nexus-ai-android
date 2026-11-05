@@ -77,7 +77,8 @@ class SecurityAuditTests(unittest.TestCase):
         class FakeResponse:
             status = 200
             reason = "OK"
-            headers = headers
+            def __init__(self):
+                self.headers = headers
             def getheader(self, name):
                 return {"Strict-Transport-Security": "max-age=31536000"}.get(name)
 
