@@ -1,6 +1,6 @@
 """Local privacy-preserving baseline comparison for NEXUS LAN audits."""
 from __future__ import annotations
-import json, os, re, tempfile
+import ipaddress, json, os, tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -8,11 +8,18 @@ BASELINE_DIR = Path.home() / ".cache" / "nexus-ai" / "security-baselines"
 BASELINE_SCHEMA = 1
 
 def _safe_target(target):
-    if not re.fullmatch(r"(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){2}", str(target)):
-        raise ValueError("Destino no válido para línea base.")
-    parts=[int(x) for x in target.split(".")]
-    if len(parts)!=4 or any(x>255 for x in parts): raise ValueError("Destino IPv4 no válido.")
-    return target
+    try:
+        address = ipaddress.ip_address(str(target).strip())
+    except ValueError as exc:
+        raise ValueError("Destino no válido para línea base.") from exc
+    allowed = any(address in network for network in (
+        ipaddress.ip_network("10.0.0.0/8"),
+        ipaddress.ip_network("172.16.0.0/12"),
+        ipaddress.ip_network("192.168.0.0/16"),
+    ))
+    if address.version != 4 or not allowed:
+        raise ValueError("La línea base solo admite IPv4 privada RFC1918.")
+    return str(address)
 
 def _snapshot(report):
     services={}
