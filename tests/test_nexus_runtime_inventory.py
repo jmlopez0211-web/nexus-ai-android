@@ -14,6 +14,10 @@ class RuntimeInventoryTests(unittest.TestCase):
         self.assertIn("internal_modules", report)
         self.assertIn("tools", report)
         self.assertIn("python_modules", report)
+        self.assertIn("python_packages", report)
+        self.assertIn("proot_environments", report)
+        self.assertIsInstance(report["python_packages"], list)
+        self.assertIsInstance(report["proot_environments"], list)
         self.assertTrue(report["policy"]["inventory_read_only"])
 
     def test_sqlite_smoke_test_uses_memory_database(self):
