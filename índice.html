@@ -1035,7 +1035,7 @@ function renderLocalSecurityAudit(report) {
     root.append(card);
   });
 }
-async async function compareLocalAuditBaseline(){
+async function compareLocalAuditBaseline(){
  const button=document.getElementById("compare-local-audit"),status=document.getElementById("local-audit-change-status"),root=document.getElementById("local-audit-change-results");
  const target=document.getElementById("nexus-scan-target").value.trim(),authorized=document.getElementById("nexus-scan-authorized").checked,token=getBridgeToken();
  if(!token){status.textContent="Guarda primero la conexión y el token local.";return;}
