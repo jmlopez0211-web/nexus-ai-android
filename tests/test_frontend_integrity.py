@@ -46,6 +46,14 @@ class FrontendIntegrityTests(unittest.TestCase):
 
 
 
+    def test_baseline_change_tracking_and_professional_report_are_integrated(self):
+        html = (ROOT / "índice.html").read_text(encoding="utf-8")
+        self.assertIn('id="compare-local-audit"', html)
+        self.assertIn('"/api/audit/compare"', html)
+        self.assertIn("change_tracking", html)
+        self.assertIn("const changes =", html)
+        self.assertIn("Comparación con línea base", html)
+
     def test_detailed_local_security_audit_and_report_exports_are_integrated(self):
         html = (ROOT / "índice.html").read_text(encoding="utf-8")
         self.assertIn('id="audit-local-host"', html)

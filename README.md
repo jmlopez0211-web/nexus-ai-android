@@ -124,3 +124,15 @@ La ruta autenticada `POST /api/audit` amplía el inventario TCP de un único equ
 - El alcance sigue limitado a una sola IPv4 RFC1918 y a los puertos TCP predefinidos. No recorre subredes ni intenta iniciar sesión.
 
 Los informes excluyen valores de cookies, tokens, contraseñas y cuerpos de respuesta. La inspección no modifica el equipo auditado.
+
+
+## Seguimiento de cambios y línea base local
+
+La ruta autenticada `POST /api/audit/compare` ejecuta la auditoría defensiva de un único IPv4 privado y compara el resultado con la última línea base local del mismo equipo.
+
+- La primera ejecución crea una línea base; no inventa cambios cuando aún no existe una referencia.
+- Las siguientes ejecuciones detectan puertos TCP que aparecen o dejan de responder, cambios de huella SHA-256 del certificado TLS, fechas/sujeto/emisor del certificado, estado TLS, cabeceras HTTP, cookies (solo nombre y atributos) y estado HTTP.
+- Cada diferencia incluye evidencia, clasificación, nivel de confianza y recomendación. Un cambio observado no se etiqueta automáticamente como vulnerabilidad.
+- La línea base se guarda solo en Termux en `~/.cache/nexus-ai/security-baselines/`, con permisos privados y escritura atómica. No se guardan cuerpos HTTP, valores de cookies ni credenciales.
+- La interfaz ofrece JSON y HTML; la vista de impresión permite guardar el informe como PDF desde el navegador.
+- La comparación es entre la última auditoría y la anterior. No es un histórico inmutable ni una vigilancia continua; hay que ejecutar una nueva comparación para actualizar la referencia.

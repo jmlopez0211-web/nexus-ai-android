@@ -195,6 +195,10 @@ footer{color:#62798a;border-color:#d7e4ed}
     <p id="local-scan-status" class="muted" role="status" aria-live="polite">Sin escaneo local.</p>
     <div id="local-scan-results"></div>
     <div class="notice" style="margin-top:12px"><strong>Auditoría detallada HTTP/TLS</strong><br>Además de los puertos TCP, consulta únicamente GET / en servicios web detectados. No inicia sesión, no sigue redirecciones, no guarda el cuerpo ni los valores de cookies. La validación TLS se informa por separado.</div>
+    <div class="notice" style="margin-top:12px"><strong>Comparación con línea base</strong><br>Guarda la primera auditoría y compara las siguientes para detectar cambios observados en puertos, certificados TLS y configuración HTTP. La línea base se conserva únicamente en Termux.</div>
+    <div class="audit-actions"><button id="compare-local-audit" type="button">Auditar y comparar cambios</button></div>
+    <p id="local-audit-change-status" class="muted" role="status" aria-live="polite">Sin comparación de cambios.</p>
+    <div id="local-audit-change-results" aria-live="polite"></div>
     <div class="audit-actions">
       <button id="audit-local-host" type="button">Ejecutar auditoría detallada</button>
       <button id="export-local-audit-json" type="button" disabled>Exportar JSON</button>
@@ -950,6 +954,12 @@ function buildLocalAuditHtml(report) {
     "</h3><p>"+auditEscape(item.evidence)+"</p><p><strong>Recomendación:</strong> "+
     auditEscape(item.recommendation)+"</p><p>Clasificación: "+auditEscape(item.classification)+
     " · Vulnerabilidad confirmada: no</p></article>").join("");
+  const changes = (((report.change_tracking || {}).changes) || []).map(item =>
+    "<article><h3>"+auditEscape(item.severity.toUpperCase())+" · "+auditEscape(item.code)+
+    " · puerto "+auditEscape(item.target)+"</h3><p>"+auditEscape(item.evidence)+
+    "</p><p><strong>Recomendación:</strong> "+auditEscape(item.recommendation)+
+    "</p><p>Clasificación: "+auditEscape(item.classification)+" · Confianza: "+
+    auditEscape(item.confidence)+"</p></article>").join("");
   const controls = (report.security_controls_observed || []).map(item =>
     "<li>"+auditEscape(item.control)+" (puerto "+auditEscape(item.target)+"): "+
     auditEscape(item.evidence)+"</li>").join("");
@@ -964,7 +974,8 @@ function buildLocalAuditHtml(report) {
     " · Servicios web inspeccionados: "+auditEscape(report.summary.web_services_inspected)+
     " · Vulnerabilidades confirmadas: 0</p><p class='muted'>Observaciones de configuración y evidencias. No se enviaron credenciales ni se guardaron valores de cookies.</p>"+
     "<h2>Servicios web</h2>"+(services || "<p>No se detectaron servicios HTTP/HTTPS en los puertos comprobados.</p>")+
-    "<h2>Controles observados</h2><ul>"+controls+"</ul><h2>Hallazgos y recomendaciones</h2>"+
+    "<h2>Controles observados</h2><ul>"+controls+"</ul>"+
+    "<h2>Comparación con línea base</h2>"+(changes || "<p>Sin comparación disponible o sin cambios observados.</p>")+"<h2>Hallazgos y recomendaciones</h2>"+
     (findings || "<p>No se generaron hallazgos adicionales.</p>")+
     "<h2>Alcance y limitaciones</h2><ul>"+(report.limitations || []).map(x=>"<li>"+auditEscape(x)+"</li>").join("")+
     "</ul></body></html>";
@@ -1024,6 +1035,25 @@ function renderLocalSecurityAudit(report) {
     root.append(card);
   });
 }
+async function compareLocalAuditBaseline(){
+ const button=document.getElementById("compare-local-audit"),status=document.getElementById("local-audit-change-status"),root=document.getElementById("local-audit-change-results");
+ const target=document.getElementById("nexus-scan-target").value.trim(),authorized=document.getElementById("nexus-scan-authorized").checked,token=getBridgeToken();
+ if(!token){status.textContent="Guarda primero la conexión y el token local.";return;}
+ if(!authorized){status.textContent="Confirma que tienes autorización para auditar este equipo.";return;}
+ if(!target){status.textContent="Introduce la IPv4 privada del equipo.";return;}
+ button.disabled=true;status.textContent="Comparando puertos, certificados y configuración…";root.replaceChildren();
+ try{
+  const response=await fetch(getWifiBridgeUrl()+"/api/audit/compare",{method:"POST",mode:"cors",cache:"no-store",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({target,authorized:true}),signal:AbortSignal.timeout(45000)});
+  const data=await response.json();if(!response.ok||data.ok!==true)throw new Error(data.error||("HTTP "+response.status));
+  latestLocalAudit=data;const tracking=data.change_tracking||{};
+  status.textContent=tracking.status==="baseline_created"?"Primera auditoría guardada como línea base. Repite la comprobación para detectar cambios.":(tracking.change_count||0)+" cambio(s) observado(s) desde "+(tracking.previous_captured_at||"la última línea base")+".";
+  const summary=document.createElement("p");summary.className="muted";summary.textContent="Puertos abiertos: "+((data.scan||{}).open_count??0)+" · Servicios web: "+((data.services||[]).length)+" · Cambios: "+(tracking.change_count??0)+" · Confianza: "+(tracking.confidence||"N/D");root.append(summary);
+  (tracking.changes||[]).forEach(change=>{const card=document.createElement("article");card.className="finding "+(change.severity||"info");const h=document.createElement("h4");h.textContent=change.code+" · puerto "+(change.target||"N/D");const e=document.createElement("p");e.textContent="Evidencia: "+change.evidence;const r=document.createElement("p");r.textContent="Recomendación: "+change.recommendation;const c=document.createElement("p");c.className="muted";c.textContent="Clasificación: "+change.classification+" · confianza: "+change.confidence;card.append(h,e,r,c);root.append(card);});
+  if(!tracking.changes||!tracking.changes.length){const n=document.createElement("p");n.textContent=tracking.status==="baseline_created"?"Línea base preparada; aún no existe una comparación.":"No se observaron diferencias en los campos comparados.";root.append(n);}
+  ["export-local-audit-json","export-local-audit-html","print-local-audit"].forEach(id=>document.getElementById(id).disabled=false);
+ }catch(error){status.textContent="Error en comparación: "+error.message;}finally{button.disabled=false;}
+}
+document.getElementById("compare-local-audit").addEventListener("click",compareLocalAuditBaseline);
 async function runNexusSecurityAudit() {
   const status = document.getElementById("local-audit-status");
   const target = document.getElementById("nexus-scan-target").value.trim();

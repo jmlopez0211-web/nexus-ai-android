@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from nexus_wireless_engine import inventory_tools, run_tool_module, _termux_wifi_command
 from nexus_plugin_manager import list_plugins, launch_plugin
 from nexus_security_audit import build_security_report
+from nexus_audit_baseline import compare_and_store_baseline
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
@@ -369,7 +370,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._reply(400, {"ok": False, "error": str(exc)}, origin)
             except Exception as exc:
                 return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
-        if path not in ("/api/scan", "/api/audit"):
+        if path not in ("/api/scan", "/api/audit", "/api/audit/compare"):
             return self._reply(404, {"ok": False, "error": "Ruta no encontrada"}, origin)
         try:
             length = int(self.headers.get("Content-Length", "0"))
@@ -382,8 +383,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._reply(403, {"ok": False, "error": "Confirma que tienes autorización para revisar ese equipo"}, origin)
             target = data.get("target", "")
             result = scan_host(target)
-            if path == "/api/audit":
+            if path in ("/api/audit", "/api/audit/compare"):
                 report = build_security_report(target, result, PORTS)
+                if path == "/api/audit/compare":
+                    report["change_tracking"] = compare_and_store_baseline(report)
                 return self._reply(200, report, origin)
             return self._reply(200, result, origin)
         except (ValueError, json.JSONDecodeError) as exc:
