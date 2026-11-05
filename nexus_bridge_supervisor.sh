@@ -70,6 +70,7 @@ while :; do
       TOKEN="$(cat "$TOKEN_FILE")"
       if NEXUS_HEALTH_TOKEN="$TOKEN" NEXUS_HEALTH_PORT="$PORT" "$PYTHON" -c 'import os,urllib.request; r=urllib.request.Request("http://127.0.0.1:"+os.environ.get("NEXUS_HEALTH_PORT","8766")+"/api/status",headers={"Authorization":"Bearer "+os.environ["NEXUS_HEALTH_TOKEN"]}); x=urllib.request.urlopen(r,timeout=5); raise SystemExit(0 if x.status==200 else 1)' >/dev/null 2>&1; then
         FAILURES=0
+        BACKOFF=3
       else
         FAILURES=$((FAILURES + 1))
         log "Health check fallido ($FAILURES/3)."
