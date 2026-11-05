@@ -301,8 +301,15 @@ m = re.search(r"^CapEff:\s*([0-9a-fA-F]+)", status, re.M)
 cap = int(m.group(1), 16) if m else None
 try:
     uid, euid = os.getuid(), os.geteuid()
+    group_ids = list(os.getgroups())
 except AttributeError:
     uid = euid = None
+    group_ids = []
+try:
+    import grp
+    groups = [{"gid":gid,"name":grp.getgrgid(gid).gr_name} for gid in group_ids]
+except Exception:
+    groups = [{"gid":gid,"name":None} for gid in group_ids]
 interfaces, phys = [], []
 device_access = []
 for path in ("/dev/rfkill", "/dev/net/tun", "/dev/bus/usb"):
@@ -342,7 +349,7 @@ if iw:
         iw_error=(d.stderr or l.stderr or "")[:240] or None
     except Exception as e:
         netlink="probe_error"; iw_error=type(e).__name__
-print(json.dumps({"environment":"Ubuntu Proot","python_version":platform.python_version(),"kernel_release":platform.release(),"architecture":platform.machine(),"tools":items,"privileges":{"uid":uid,"effective_uid":euid,"uid_zero_in_current_namespace":euid==0,"root_in_proot":euid==0,"android_root":"not_inferred_from_proot","capabilities":{"effective_hex":m.group(1).lower() if m else None,"cap_net_admin":bool(cap & (1<<12)) if cap is not None else None,"cap_net_raw":bool(cap & (1<<13)) if cap is not None else None},"permission_note":"UID 0 corresponde al namespace Proot; no equivale a root Android."},"device_permissions":device_access,"device_permission_note":"Los permisos POSIX no prueban acceso concedido por SELinux/kernel/controlador.","network_interfaces":interfaces,"wireless_interfaces_iw":wireless_iw,"wireless_phy_sysfs":phys,"hardware_access":{"status":"visible" if phys else ("blocked_or_not_exposed" if netlink=="blocked_or_unavailable" else "not_detected"),"iw_netlink":netlink,"evidence":iw_error or "Consultas sysfs e iw."},"monitor_mode":monitor,"packet_injection":{"status":"unknown","verified":False,"evidence":"No se envían tramas de prueba ni se realizan ataques."}},ensure_ascii=False))'''
+print(json.dumps({"environment":"Ubuntu Proot","python_version":platform.python_version(),"kernel_release":platform.release(),"architecture":platform.machine(),"tools":items,"privileges":{"uid":uid,"effective_uid":euid,"uid_zero_in_current_namespace":euid==0,"root_in_proot":euid==0,"android_root":"not_inferred_from_proot","group_ids":group_ids,"groups":groups,"capabilities":{"effective_hex":m.group(1).lower() if m else None,"cap_net_admin":bool(cap & (1<<12)) if cap is not None else None,"cap_net_raw":bool(cap & (1<<13)) if cap is not None else None},"permission_note":"UID 0 corresponde al namespace Proot; no equivale a root Android."},"device_permissions":device_access,"device_permission_note":"Los permisos POSIX no prueban acceso concedido por SELinux/kernel/controlador.","network_interfaces":interfaces,"wireless_interfaces_iw":wireless_iw,"wireless_phy_sysfs":phys,"hardware_access":{"status":"visible" if phys else ("blocked_or_not_exposed" if netlink=="blocked_or_unavailable" else "not_detected"),"iw_netlink":netlink,"evidence":iw_error or "Consultas sysfs e iw."},"monitor_mode":monitor,"packet_injection":{"status":"unknown","verified":False,"evidence":"No se envían tramas de prueba ni se realizan ataques."}},ensure_ascii=False))'''
 
 
 def inspect_ubuntu_proot(timeout: int = PROOT_TIMEOUT_SECONDS) -> dict:
