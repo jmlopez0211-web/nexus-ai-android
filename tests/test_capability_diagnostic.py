@@ -11,7 +11,7 @@ class PrivilegeDiagnosticTests(unittest.TestCase):
         with patch.object(diag.os, "getuid", return_value=0), \
              patch.object(diag.os, "geteuid", return_value=0), \
              patch.object(diag.os, "getgroups", return_value=[0]), \
-             patch.object(diag, "_read_text", return_value="CapEff:\\t0000000000003000\\n"):
+             patch.object(diag, "_read_text", return_value="CapEff:\t0000000000003000\n"):
             result = diag.inspect_privileges("ubuntu_proot")
         self.assertTrue(result["root_in_proot"])
         self.assertEqual(result["android_root"], "not_inferred_from_proot")
@@ -72,8 +72,8 @@ class ExecutableDiagnosticTests(unittest.TestCase):
 
 class WirelessCapabilityTests(unittest.TestCase):
     def test_monitor_is_only_advertised_when_iw_reports_it(self):
-        dev = SimpleNamespace(returncode=0, stdout="phy#0\\n Interface wlan0\\n", stderr="")
-        phy = SimpleNamespace(returncode=0, stdout="Wiphy phy0\\n\\tSupported interface modes:\\n\\t\\t * managed\\n\\t\\t * monitor\\nBand 1:\\n", stderr="")
+        dev = SimpleNamespace(returncode=0, stdout="phy#0\n Interface wlan0\n", stderr="")
+        phy = SimpleNamespace(returncode=0, stdout="Wiphy phy0\n\tSupported interface modes:\n\t\t * managed\n\t\t * monitor\nBand 1:\n", stderr="")
         with patch.object(diag.subprocess, "run", side_effect=[dev, phy]):
             result = diag._iw_probe("/usr/bin/iw")
         self.assertEqual(result["netlink"], "accessible")
