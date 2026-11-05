@@ -954,6 +954,12 @@ function buildLocalAuditHtml(report) {
     "</h3><p>"+auditEscape(item.evidence)+"</p><p><strong>Recomendación:</strong> "+
     auditEscape(item.recommendation)+"</p><p>Clasificación: "+auditEscape(item.classification)+
     " · Vulnerabilidad confirmada: no</p></article>").join("");
+  const changes = (((report.change_tracking || {}).changes) || []).map(item =>
+    "<article><h3>"+auditEscape(item.severity.toUpperCase())+" · "+auditEscape(item.code)+
+    " · puerto "+auditEscape(item.target)+"</h3><p>"+auditEscape(item.evidence)+
+    "</p><p><strong>Recomendación:</strong> "+auditEscape(item.recommendation)+
+    "</p><p>Clasificación: "+auditEscape(item.classification)+" · Confianza: "+
+    auditEscape(item.confidence)+"</p></article>").join("");
   const controls = (report.security_controls_observed || []).map(item =>
     "<li>"+auditEscape(item.control)+" (puerto "+auditEscape(item.target)+"): "+
     auditEscape(item.evidence)+"</li>").join("");
@@ -968,7 +974,8 @@ function buildLocalAuditHtml(report) {
     " · Servicios web inspeccionados: "+auditEscape(report.summary.web_services_inspected)+
     " · Vulnerabilidades confirmadas: 0</p><p class='muted'>Observaciones de configuración y evidencias. No se enviaron credenciales ni se guardaron valores de cookies.</p>"+
     "<h2>Servicios web</h2>"+(services || "<p>No se detectaron servicios HTTP/HTTPS en los puertos comprobados.</p>")+
-    "<h2>Controles observados</h2><ul>"+controls+"</ul><h2>Hallazgos y recomendaciones</h2>"+
+    "<h2>Controles observados</h2><ul>"+controls+"</ul>"+
+    "<h2>Comparación con línea base</h2>"+(changes || "<p>Sin comparación disponible o sin cambios observados.</p>")+"<h2>Hallazgos y recomendaciones</h2>"+
     (findings || "<p>No se generaron hallazgos adicionales.</p>")+
     "<h2>Alcance y limitaciones</h2><ul>"+(report.limitations || []).map(x=>"<li>"+auditEscape(x)+"</li>").join("")+
     "</ul></body></html>";
