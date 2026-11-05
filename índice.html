@@ -1012,8 +1012,7 @@ function buildLocalAuditHtml(report) {
     "<h2>Comparación con línea base</h2>"+(changes || "<p>Sin comparación disponible o sin cambios observados.</p>")+"<h2>Hallazgos y recomendaciones</h2>"+
     (findings || "<p>No se generaron hallazgos adicionales.</p>")+
     "<h2>Alcance y limitaciones</h2><ul>"+(report.limitations || []).map(x=>"<li>"+auditEscape(x)+"</li>").join("")+
-    "</ul><script src="/runtime-center.js" defer></script>
-</body></html>";
+    "</ul></body></html>";
 }
 function renderLocalSecurityAudit(report) {
   const root = document.getElementById("local-audit-results");
@@ -1351,5 +1350,6 @@ document.getElementById("export-wifi-simulation").addEventListener("click",()=>{
   }
 })();
 </script>
+<script src="/runtime-center.js" defer></script>
 </body>
 </html>
