@@ -126,5 +126,19 @@ class UbuntuProotTests(unittest.TestCase):
         self.assertEqual(result["privileges"]["android_root"], "not_inferred_from_proot")
 
 
+    def test_report_combines_both_environments_and_never_claims_radio_changes(self):
+        termux = {"context": "termux", "packet_injection": {"status": "unknown", "verified": False}}
+        ubuntu = {"available": True, "status": "ok", "packet_injection": {"status": "unknown", "verified": False}}
+        with patch.object(diag, "inspect_runtime", return_value=termux), \
+             patch.object(diag, "inspect_ubuntu_proot", return_value=ubuntu):
+            report = diag.build_capability_report()
+        self.assertTrue(report["ok"])
+        self.assertIn("termux", report["environments"])
+        self.assertIn("ubuntu_proot", report["environments"])
+        self.assertFalse(report["safety"]["interfaces_changed"])
+        self.assertFalse(report["safety"]["frames_injected"])
+        self.assertFalse(report["safety"]["privileges_escalated"])
+
+
 if __name__ == "__main__":
     unittest.main()
