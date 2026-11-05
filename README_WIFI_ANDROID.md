@@ -76,3 +76,19 @@ python -m py_compile main.py app.py audit_engine.py nexus_bridge_termux.py nexus
 ```
 
 En Android, mantén el puente limitado a `127.0.0.1`. La respuesta esperada de `/api/wifi` incluye `mode`, `cached`, `source`, `requested_at`, `cache_age_seconds` y, cuando Android expone la marca temporal, `scan_age_seconds`.
+
+
+## Diagnóstico de hardware, permisos y capacidades
+
+La ruta autenticada `GET /api/capabilities` devuelve el diagnóstico separado de Termux/Android y Ubuntu Proot. Se consulta con el mismo token privado del puente:
+
+```bash
+curl -sS -H "Authorization: Bearer $(cat ~/.nexus_bridge_token)" \
+  http://127.0.0.1:8766/api/capabilities | python -m json.tool
+```
+
+El informe separa instalación (`installed`), permiso de ejecución (`executable_permission`) y respuesta a una comprobación inocua de ayuda/versión (`execution_probe`). Informa UID, UID efectivo, grupos y bits CapEff; el UID 0 de Ubuntu Proot nunca se interpreta como root Android.
+
+Las consultas `iw dev` y `iw list` son de lectura. Si el controlador anuncia `monitor`, el resultado queda como `advertised_not_functionally_verified`: no se crea ni activa una interfaz. La inyección de paquetes se deja en `unknown`, porque una consulta pasiva no puede demostrarla y este diagnóstico no transmite tramas de prueba. No cambia interfaces, eleva privilegios ni captura credenciales.
+
+La comprobación de `termux-wifi-scaninfo` solo informa el número de resultados y omite SSID/BSSID del informe de capacidades.
