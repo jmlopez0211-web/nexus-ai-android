@@ -30,7 +30,7 @@ class AuditEngineSafetyTests(unittest.TestCase):
         redirect.close = Mock()
         public_address = [(None, None, None, None, ("93.184.216.34", 0))]
         with patch.object(audit_engine.socket, "getaddrinfo", return_value=public_address), \
-             patch.object(audit_engine.requests, "get", return_value=redirect) as request:
+             patch.object(audit_engine.requests.Session, "get", return_value=redirect) as request:
             with self.assertRaises(audit_engine.AuditInputError):
                 audit_engine.audit_url("https://example.org/")
         request.assert_called_once()
@@ -41,6 +41,20 @@ class AuditEngineSafetyTests(unittest.TestCase):
             audit_engine._validate_public_http_url("https://8.8.8.8/health"),
             "https://8.8.8.8/health",
         )
+
+
+    def test_http_adapter_pins_dns_ip_and_keeps_original_tls_hostname(self):
+        import requests
+        adapter = audit_engine._PinnedIPAdapter("audit.example", "93.184.216.34", 443)
+        request = requests.Request(
+            "GET", "https://audit.example/health",
+            headers={"Host": "audit.example"}
+        ).prepare()
+        pool = adapter.get_connection_with_tls_context(request, True, proxies={}, cert=None)
+        self.assertEqual(pool.host, "93.184.216.34")
+        self.assertEqual(pool.assert_hostname, "audit.example")
+        self.assertEqual(pool.conn_kw.get("server_hostname"), "audit.example")
+        adapter.close()
 
 
 if __name__ == "__main__":
