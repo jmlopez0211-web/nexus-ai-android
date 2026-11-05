@@ -326,6 +326,28 @@ Nexus-Lab-2026!</textarea>
 <p>IA: estado de conexión verificado en cada consulta.</p>
 </section>
 <footer>NEXUS AI · Defensive Intelligence · Auditorías autorizadas · Resultados verificables</footer>
+
+<section class="panel" id="nexus-engine-center" aria-labelledby="nexus-engine-center-title">
+  <p class="kicker">ANDROID RUNTIME MANAGEMENT</p>
+  <h2 id="nexus-engine-center-title">Centro completo de motores</h2>
+  <p class="muted">Inventario real del Samsung/Termux. Las consultas son de solo lectura; las pruebas ejecutan únicamente comprobaciones fijas y seguras.</p>
+  <div class="audit-actions">
+    <button type="button" id="nexus-runtime-inventory">Inventario completo</button>
+    <button type="button" id="nexus-runtime-diagnostics">Diagnosticar sistema</button>
+    <button type="button" id="nexus-runtime-repair">Reparación segura</button>
+    <button type="button" id="nexus-runtime-export" disabled>Exportar informe</button>
+  </div>
+  <p id="nexus-runtime-status" class="muted" role="status" aria-live="polite">Conecta el puente local para consultar los motores instalados.</p>
+  <div id="nexus-runtime-summary"></div>
+  <h3>Motores de ejecución</h3><div id="nexus-runtime-list"></div>
+  <h3>Motores SQL</h3><div id="nexus-sql-list"></div>
+  <h3>Módulos internos de NEXUS</h3><div id="nexus-internal-list"></div>
+  <h3>Herramientas instaladas</h3><div id="nexus-tools-list"></div>
+  <h3>Módulos Python y dependencias</h3><div id="nexus-python-packages"></div>
+  <h3>Resultados de pruebas y reparación</h3><div id="nexus-runtime-results" aria-live="polite"></div>
+  <p class="muted">La reparación automática se limita a carpetas privadas de datos propiedad de NEXUS. No instala paquetes, no cambia permisos de Android, no edita ni sustituye código del proyecto. Las instalaciones y reparaciones de componentes del sistema requieren una acción separada y explícita.</p>
+</section>
+
 </main>
 <script 
 src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -989,7 +1011,8 @@ function buildLocalAuditHtml(report) {
     "<h2>Comparación con línea base</h2>"+(changes || "<p>Sin comparación disponible o sin cambios observados.</p>")+"<h2>Hallazgos y recomendaciones</h2>"+
     (findings || "<p>No se generaron hallazgos adicionales.</p>")+
     "<h2>Alcance y limitaciones</h2><ul>"+(report.limitations || []).map(x=>"<li>"+auditEscape(x)+"</li>").join("")+
-    "</ul></body></html>";
+    "</ul><script src="/runtime-center.js" defer></script>
+</body></html>";
 }
 function renderLocalSecurityAudit(report) {
   const root = document.getElementById("local-audit-results");
