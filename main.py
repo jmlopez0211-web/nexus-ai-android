@@ -104,7 +104,7 @@ def consultar_ia():
         return jsonify({"error": "La consulta supera el límite de 12.000 caracteres."}), 413
 
     try:
-        cliente = Groq(api_key=clave)
+        cliente = Groq(api_key=clave, timeout=30.0, max_retries=0)
         respuesta = cliente.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
