@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 from nexus_wireless_engine import inventory_tools, run_tool_module, _termux_wifi_command
 from nexus_plugin_manager import list_plugins, launch_plugin
+from nexus_security_audit import build_security_report
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
@@ -368,7 +369,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._reply(400, {"ok": False, "error": str(exc)}, origin)
             except Exception as exc:
                 return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
-        if path != "/api/scan":
+        if path not in ("/api/scan", "/api/audit"):
             return self._reply(404, {"ok": False, "error": "Ruta no encontrada"}, origin)
         try:
             length = int(self.headers.get("Content-Length", "0"))
@@ -379,7 +380,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._reply(400, {"ok": False, "error": "El cuerpo JSON debe ser un objeto"}, origin)
             if data.get("authorized") is not True:
                 return self._reply(403, {"ok": False, "error": "Confirma que tienes autorización para revisar ese equipo"}, origin)
-            result = scan_host(data.get("target", ""))
+            target = data.get("target", "")
+            result = scan_host(target)
+            if path == "/api/audit":
+                report = build_security_report(target, result, PORTS)
+                return self._reply(200, report, origin)
             return self._reply(200, result, origin)
         except (ValueError, json.JSONDecodeError) as exc:
             return self._reply(400, {"ok": False, "error": str(exc)}, origin)
