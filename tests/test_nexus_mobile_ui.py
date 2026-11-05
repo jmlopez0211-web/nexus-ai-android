@@ -49,7 +49,7 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertIn("Inventario local de respaldo", self.html)
         self.assertIn("last_nonempty_api_response_at", self.html)
         self.assertIn("scan_age_seconds", self.html)
-        self.assertIn("última lectura válida de esta sesión", self.html)
+        self.assertIn("Se conserva el inventario de esta sesión", self.html)
         self.assertIn("termux-wifi-scaninfo", self.html)
 
     def test_all_bridge_actions_use_the_shared_token_reader(self):
