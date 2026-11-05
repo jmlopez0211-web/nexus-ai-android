@@ -71,6 +71,7 @@ TOOLS = (
     ("ospd-openvas", "OpenVAS Scanner", ("ospd-openvas",), "Escáner Greenbone; detección solamente"),
     ("wapiti", "Wapiti", ("wapiti",), "Auditoría web; detección solamente"),
     ("termux-api", "Termux:API Wi-Fi", ("termux-wifi-scaninfo",), "Lectura de resultados Wi-Fi Android"),
+    ("proot-distro", "Proot Distro", ("proot-distro",), "Entornos Linux aislados en Android"),
     ("git", "Git", ("git",), "Control de versiones"),
 )
 
@@ -146,6 +147,35 @@ def _read_plugin_registry():
         return {"registry_managed_by": "nexus_plugin_manager", "registry_path": str(registry),
                 "execution_requires_approval": True, "items": [], "error": "registro_no_legible"}
 
+def _installed_python_distributions():
+    packages = []
+    try:
+        for dist in importlib.metadata.distributions():
+            name = (dist.metadata.get("Name") or "unknown").strip()
+            packages.append({"name": name, "version": str(dist.version)})
+    except (OSError, ValueError, importlib.metadata.PackageNotFoundError):
+        pass
+    packages.sort(key=lambda item: item["name"].casefold())
+    return packages[:1000]
+
+def _proot_environments():
+    prefix = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr"))
+    rootfs = prefix / "var" / "lib" / "proot-distro" / "installed-rootfs"
+    environments = []
+    try:
+        entries = sorted((item for item in rootfs.iterdir() if item.is_dir()), key=lambda item: item.name)
+    except OSError:
+        return environments
+    for distro in entries:
+        candidates = (distro / "usr" / "bin" / "python3", distro / "usr" / "bin" / "python",
+                      distro / "usr" / "local" / "bin" / "python3")
+        interpreter = next((item for item in candidates if item.is_file()), None)
+        environments.append({"name": distro.name, "installed": True,
+                             "python_found": interpreter is not None,
+                             "python_path_in_rootfs": str(interpreter) if interpreter else None,
+                             "execution_verified": False,
+                             "note": "Intérprete detectado en el rootfs; no se ha iniciado el contenedor."})
+    return environments
 def inventory():
     runtimes = []
     for key, name, commands, purpose in RUNTIMES:
@@ -212,6 +242,8 @@ def inventory():
             "termux": "com.termux" in os.environ.get("PREFIX", ""),
         },
         "runtimes": runtimes, "sql_engines": sql, "tools": tools,
+        "python_packages": _installed_python_distributions(),
+        "proot_environments": _proot_environments(),
         "internal_modules": modules, "python_modules": _python_packages(),
         "plugins": _read_plugin_registry(),
         "policy": {
@@ -291,10 +323,10 @@ def run_runtime_check(runtime_id, confirmed=False):
     checks = {
         "python": (sys.executable, ["-c", "import json,sqlite3; print('PYTHON_OK', json.dumps({'sqlite': sqlite3.sqlite_version}))"]),
         "node": ("node", ["-e", "console.log('NODE_OK')"]),
-        "bash": ("bash", ["-c", "printf 'BASH_OK\\n'"]),
-        "php": ("php", ["-r", "echo \"PHP_OK\\n\";"]),
+        "bash": ("bash", ["-c", "printf 'BASH_OK\n'"]),
+        "php": ("php", ["-r", "echo \"PHP_OK\n\";"]),
         "ruby": ("ruby", ["-e", "puts 'RUBY_OK'"]),
-        "perl": ("perl", ["-e", "print \"PERL_OK\\n\";"]),
+        "perl": ("perl", ["-e", "print \"PERL_OK\n\";"]),
         "lua": ("lua", ["-e", "print('LUA_OK')"]),
         "java": ("java", ["-version"]),
         "r": ("R", ["--version"]),
@@ -327,7 +359,8 @@ def run_runtime_check(runtime_id, confirmed=False):
     if runtime_id not in checks:
         raise ValueError("Motor no autorizado para prueba.")
     executable, args = checks[runtime_id]
-    path = shutil.which(executable) if executable != sys.executable else executable
+    path = (_which(("clang", "gcc")) if runtime_id == "c-compiler"
+            else (shutil.which(executable) if executable != sys.executable else executable))
     if not path:
         return {"ok": False, "id": runtime_id, "status": "not_installed"}
     try:
@@ -342,3 +375,59 @@ def run_runtime_check(runtime_id, confirmed=False):
         return {"ok": False, "id": runtime_id, "error": "timeout"}
     except OSError as exc:
         return {"ok": False, "id": runtime_id, "error": type(exc).__name__}
+
+
+REQUIRED_APP_DEPENDENCIES = (
+    ("flask", "Flask>=3.0,<4"),
+    ("groq", "groq>=0.11,<2"),
+    ("requests", "requests>=2.32.2,<3"),
+    ("gunicorn", "gunicorn>=22,<24"),
+)
+
+def _missing_app_dependencies():
+    missing = []
+    for module, requirement in REQUIRED_APP_DEPENDENCIES:
+        try:
+            available = importlib.util.find_spec(module) is not None
+        except (ImportError, ModuleNotFoundError, ValueError):
+            available = False
+        if not available:
+            missing.append((module, requirement))
+    return missing
+
+def repair_missing_dependencies(confirmed=False):
+    """Install only missing, fixed NEXUS runtime requirements after user approval."""
+    if confirmed is not True:
+        raise PermissionError("La reparación de dependencias requiere confirmación explícita.")
+    missing = _missing_app_dependencies()
+    if not missing:
+        return {
+            "ok": True, "changed": False, "installed": [],
+            "note": "Todas las dependencias principales de NEXUS ya están disponibles. No se ha ejecutado pip.",
+            "diagnostics_after": diagnostics(),
+        }
+    requirements = [requirement for _, requirement in missing]
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
+             "--no-input", *requirements],
+            capture_output=True, text=True, timeout=180, check=False, shell=False,
+            env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1"},
+        )
+        unresolved = [module for module, _ in missing if importlib.util.find_spec(module) is None]
+        return {
+            "ok": result.returncode == 0 and not unresolved,
+            "changed": result.returncode == 0,
+            "installed": [module for module, _ in missing if module not in unresolved],
+            "unresolved": unresolved,
+            "returncode": result.returncode,
+            "output": ((result.stdout or "") + "\n" + (result.stderr or ""))[-4000:],
+            "note": "Solo se solicitaron dependencias NEXUS ausentes; no se solicitaron actualizaciones de los paquetes principales ya presentes; pip puede ajustar dependencias transitivas si la resolución lo requiere.",
+            "diagnostics_after": diagnostics(),
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "changed": False, "error": "timeout",
+                "note": "La instalación superó 180 segundos. Revisa conectividad y vuelve a diagnosticar."}
+    except OSError as exc:
+        return {"ok": False, "changed": False, "error": type(exc).__name__,
+                "note": "No se pudo iniciar pip en el intérprete Python activo."}

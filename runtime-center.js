@@ -5,17 +5,21 @@
  const status=$("nexus-runtime-status"),summary=$("nexus-runtime-summary");
  const runtimeRoot=$("nexus-runtime-list"),sqlRoot=$("nexus-sql-list");
  const internalRoot=$("nexus-internal-list"),toolsRoot=$("nexus-tools-list");
- const packageRoot=$("nexus-python-packages"),pluginRoot=$("nexus-runtime-plugins"),results=$("nexus-runtime-results");
+ const packageRoot=$("nexus-python-packages"),pluginRoot=$("nexus-runtime-plugins"),prootRoot=$("nexus-proot-list"),results=$("nexus-runtime-results");
  let latest=null;
  const token=()=>typeof getBridgeToken==="function"?getBridgeToken():"";
  const base=()=>typeof getWifiBridgeUrl==="function"?getWifiBridgeUrl():"http://127.0.0.1:8766";
- async function request(path,body){
+ async function request(path,body,timeout=20000){
   const auth=token();if(!auth)throw new Error("Introduce y guarda el token del puente local en Centro Wi-Fi.");
   const options={method:body?"POST":"GET",cache:"no-store",headers:{Authorization:"Bearer "+auth}};
   if(body){options.headers["Content-Type"]="application/json";options.body=JSON.stringify(body);}
-  const response=await fetch(base()+path,{...options,signal:AbortSignal.timeout(20000)});
+  const response=await fetch(base()+path,{...options,signal:AbortSignal.timeout(timeout)});
   const data=await response.json().catch(()=>({error:"Respuesta no válida"}));
-  if(!response.ok)throw new Error(data.error||("HTTP "+response.status));
+  if(!response.ok){
+   if(response.status===404&&["/api/engines","/api/diagnostics","/api/engines/run","/api/maintenance/repair","/api/maintenance/repair-dependencies"].includes(path))
+    throw new Error("El puente local todavía usa una versión anterior. Hay que actualizar nexus_bridge_termux.py y nexus_runtime_inventory.py una vez y reiniciar el puente; después podrás gestionar estas funciones desde NEXUS.");
+   throw new Error(data.error||("HTTP "+response.status));
+  }
   return data;
  }
  function card(title,detail,extra){
@@ -30,7 +34,7 @@
  }
  function renderInventory(data){
   latest=data;
-  [runtimeRoot,sqlRoot,internalRoot,toolsRoot,packageRoot,pluginRoot].forEach(x=>x.replaceChildren());
+  [runtimeRoot,sqlRoot,internalRoot,toolsRoot,packageRoot,pluginRoot,prootRoot].forEach(x=>x.replaceChildren());
   const device=data.device||{};
   summary.replaceChildren(card("Dispositivo: "+(device.machine||"N/D")+" · Python "+(device.python||"N/D"),
     (device.system||"Android/entorno no identificado")+" · "+(device.architecture||"")+" · Intérprete: "+(device.python_executable||"N/D")));
@@ -57,7 +61,13 @@
   });
   (data.internal_modules||[]).forEach(item=>line(internalRoot,item.name+" · "+item.status,item.path));
   (data.tools||[]).forEach(item=>line(toolsRoot,item.name+" · "+(item.installed?"Instalada":"No detectada"),(item.version||"Versión no disponible")+" · "+item.purpose));
-  Object.entries(data.python_modules||{}).forEach(([name,installed])=>line(packageRoot,name,installed?"Disponible":"No detectado"));
+  const packages=data.python_packages||[];
+  const packageReport=document.createElement("pre");packageReport.className="finding";
+  packageReport.style.whiteSpace="pre-wrap";packageReport.textContent=packages.length+" distribuciones Python instaladas\n"+packages.map(item=>item.name+" "+item.version).join("\n");
+  packageRoot.append(packageReport);
+  Object.entries(data.python_modules||{}).forEach(([name,installed])=>line(packageRoot,name,installed?"Módulo importable":"No detectado"));
+  (data.proot_environments||[]).forEach(item=>line(prootRoot,item.name+" · "+(item.installed?"instalado":"no disponible"),item.python_found?"Python encontrado: "+item.python_path_in_rootfs+" · ejecución todavía no verificada": "No se encontró Python en las rutas habituales"));
+  if(!(data.proot_environments||[]).length)line(prootRoot,"No se detectaron distros Proot instaladas","Se ha consultado el directorio de instalación habitual de proot-distro.");
   const plugins=data.plugins||{};
   (plugins.items||[]).forEach(item=>line(pluginRoot,item.name+" · "+(item.approved?"aprobado":"pendiente de aprobación"),item.entrypoint));
   if(!(plugins.items||[]).length)line(pluginRoot,"Sin plugins registrados",plugins.registry_path||"El registro se consulta en Termux.");
@@ -93,9 +103,24 @@
    latest={...(latest||{}),repair:data};
   }catch(e){status.textContent="No se pudo completar la reparación: "+e.message;}
  }
+
+ async function repairDependencies(){
+  if(!window.confirm("NEXUS comprobará sus dependencias principales e instalará únicamente las que falten en el Python del puente local. No solicitará actualizar paquetes principales ya presentes; pip podría ajustar dependencias transitivas si fuera necesario. ¿Continuar?"))return;
+  status.textContent="Comprobando e instalando, si hace falta, las dependencias ausentes…";
+  try{
+   const data=await request("/api/maintenance/repair-dependencies",{confirmed:true},200000);
+   results.prepend(card("Reparación de dependencias "+(data.ok?"correcta":"incompleta"),data.note));
+   (data.installed||[]).forEach(name=>results.prepend(card("✓ Dependencia disponible",name)));
+   (data.unresolved||[]).forEach(name=>results.prepend(card("✕ Dependencia pendiente",name)));
+   if(data.output)results.prepend(card("Salida de pip",data.output));
+   status.textContent=data.ok?"Dependencias comprobadas.":"La reparación no se completó por completo; consulta el resultado.";
+   latest={...(latest||{}),dependency_repair:data};
+  }catch(e){status.textContent="No se pudieron reparar las dependencias: "+e.message;}
+ }
  $("nexus-runtime-inventory").addEventListener("click",inventory);
  $("nexus-runtime-diagnostics").addEventListener("click",diagnostics);
  $("nexus-runtime-repair").addEventListener("click",repair);
+ $("nexus-dependency-repair").addEventListener("click",repairDependencies);
  $("nexus-runtime-export").addEventListener("click",()=>{
   if(!latest)return;
   const blob=new Blob([JSON.stringify(latest,null,2)],{type:"application/json"});
