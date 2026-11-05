@@ -115,9 +115,13 @@ def _latest_wifi_scan_age_seconds(networks):
         return None
     try:
         clock_id = getattr(time, "CLOCK_BOOTTIME", None)
-        elapsed = time.clock_gettime(clock_id) if clock_id is not None else time.monotonic()
-        age = int(max(0, elapsed - max(timestamps) / 1_000_000))
-        return age if age <= 7 * 24 * 60 * 60 else None
+        if clock_id is None:
+            return None
+        elapsed = time.clock_gettime(clock_id)
+        age_seconds = elapsed - max(timestamps) / 1_000_000
+        if age_seconds < 0 or age_seconds > 7 * 24 * 60 * 60:
+            return None
+        return int(age_seconds)
     except (OSError, ValueError, AttributeError):
         return None
 
