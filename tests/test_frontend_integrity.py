@@ -45,5 +45,17 @@ class FrontendIntegrityTests(unittest.TestCase):
         self.assertIn('const CACHE_NAME = "nexus-shell-v2";', worker)
 
 
+
+    def test_detailed_local_security_audit_and_report_exports_are_integrated(self):
+        html = (ROOT / "índice.html").read_text(encoding="utf-8")
+        self.assertIn('id="audit-local-host"', html)
+        self.assertIn('id="export-local-audit-json"', html)
+        self.assertIn('id="export-local-audit-html"', html)
+        self.assertIn('id="print-local-audit"', html)
+        self.assertIn('"/api/audit"', html)
+        self.assertIn("buildLocalAuditHtml", html)
+        self.assertIn("El valor no se ha almacenado", html)
+        self.assertIn("No se siguen redirecciones", html)
+
 if __name__ == "__main__":
     unittest.main()
