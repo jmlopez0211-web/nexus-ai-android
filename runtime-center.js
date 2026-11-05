@@ -5,7 +5,7 @@
  const status=$("nexus-runtime-status"),summary=$("nexus-runtime-summary");
  const runtimeRoot=$("nexus-runtime-list"),sqlRoot=$("nexus-sql-list");
  const internalRoot=$("nexus-internal-list"),toolsRoot=$("nexus-tools-list");
- const packageRoot=$("nexus-python-packages"),pluginRoot=$("nexus-runtime-plugins"),results=$("nexus-runtime-results");
+ const packageRoot=$("nexus-python-packages"),pluginRoot=$("nexus-runtime-plugins"),prootRoot=$("nexus-proot-list"),results=$("nexus-runtime-results");
  let latest=null;
  const token=()=>typeof getBridgeToken==="function"?getBridgeToken():"";
  const base=()=>typeof getWifiBridgeUrl==="function"?getWifiBridgeUrl():"http://127.0.0.1:8766";
@@ -30,7 +30,7 @@
  }
  function renderInventory(data){
   latest=data;
-  [runtimeRoot,sqlRoot,internalRoot,toolsRoot,packageRoot,pluginRoot].forEach(x=>x.replaceChildren());
+  [runtimeRoot,sqlRoot,internalRoot,toolsRoot,packageRoot,pluginRoot,prootRoot].forEach(x=>x.replaceChildren());
   const device=data.device||{};
   summary.replaceChildren(card("Dispositivo: "+(device.machine||"N/D")+" · Python "+(device.python||"N/D"),
     (device.system||"Android/entorno no identificado")+" · "+(device.architecture||"")+" · Intérprete: "+(device.python_executable||"N/D")));
@@ -57,7 +57,10 @@
   });
   (data.internal_modules||[]).forEach(item=>line(internalRoot,item.name+" · "+item.status,item.path));
   (data.tools||[]).forEach(item=>line(toolsRoot,item.name+" · "+(item.installed?"Instalada":"No detectada"),(item.version||"Versión no disponible")+" · "+item.purpose));
-  Object.entries(data.python_modules||{}).forEach(([name,installed])=>line(packageRoot,name,installed?"Disponible":"No detectado"));
+  (data.python_packages||[]).forEach(item=>line(packageRoot,item.name+" · "+item.version,"Distribución instalada en el intérprete que ejecuta el puente"));
+  Object.entries(data.python_modules||{}).forEach(([name,installed])=>line(packageRoot,name,installed?"Módulo importable":"No detectado"));
+  (data.proot_environments||[]).forEach(item=>line(prootRoot,item.name+" · "+(item.installed?"instalado":"no disponible"),item.python_found?"Python encontrado: "+item.python_path_in_rootfs+" · ejecución todavía no verificada": "No se encontró Python en las rutas habituales"));
+  if(!(data.proot_environments||[]).length)line(prootRoot,"No se detectaron distros Proot instaladas","Se ha consultado el directorio de instalación habitual de proot-distro.");
   const plugins=data.plugins||{};
   (plugins.items||[]).forEach(item=>line(pluginRoot,item.name+" · "+(item.approved?"aprobado":"pendiente de aprobación"),item.entrypoint));
   if(!(plugins.items||[]).length)line(pluginRoot,"Sin plugins registrados",plugins.registry_path||"El registro se consulta en Termux.");
