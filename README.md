@@ -136,3 +136,19 @@ La ruta autenticada `POST /api/audit/compare` ejecuta la auditoría defensiva de
 - La línea base se guarda solo en Termux en `~/.cache/nexus-ai/security-baselines/`, con permisos privados y escritura atómica. No se guardan cuerpos HTTP, valores de cookies ni credenciales.
 - La interfaz ofrece JSON y HTML; la vista de impresión permite guardar el informe como PDF desde el navegador.
 - La comparación es entre la última auditoría y la anterior. No es un histórico inmutable ni una vigilancia continua; hay que ejecutar una nueva comparación para actualizar la referencia.
+
+
+## Centro de motores y diagnóstico Android
+
+La interfaz añade el **Centro completo de motores**. Consulta el puente local autenticado:
+
+- `GET /api/engines`: inventario de intérpretes, motores SQL, módulos Python del proyecto, dependencias, herramientas y plugins registrados.
+- `GET /api/diagnostics`: autodiagnóstico de solo lectura.
+- `POST /api/engines/run`: prueba fija y autorizada de un motor disponible. No acepta comandos arbitrarios.
+- `POST /api/maintenance/repair`: prepara exclusivamente directorios privados de datos de NEXUS y requiere `{"confirmed":true}`.
+
+El catálogo detecta Python, Node.js, Bash, PHP, Java, Ruby, Perl, Lua, R, Go, Rust y compiladores C/C++ cuando están instalados. SQL incluye SQLite, DuckDB, PostgreSQL y MySQL/MariaDB. La lista de herramientas detecta Nmap, Aircrack-ng, utilidades inalámbricas, OpenSSL, clientes SQL y componentes Greenbone/OpenVAS y Wapiti sin ejecutarlos.
+
+**Límites de reparación:** desde la interfaz se pueden diagnosticar y reparar carpetas de datos propias de NEXUS. No se instalan dependencias ni se modifican scripts, permisos del sistema o ajustes de Android automáticamente. Si el puente local está detenido, el navegador no puede iniciarlo por sí solo: Android mantiene aislados los procesos de Termux. La recuperación de un puente detenido necesita un mecanismo de arranque de Android previamente configurado o una intervención local.
+
+Las pruebas de motor usan órdenes fijas de versión o pruebas inocuas. SQLite y DuckDB usan bases de datos en memoria; PostgreSQL y MySQL se inventarían, pero no se conectan sin una configuración explícita. Los plugins existentes conservan su aprobación individual y se ejecutan con los permisos de Termux; el lanzador no es un sandbox.
