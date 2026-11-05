@@ -422,7 +422,7 @@ def repair_missing_dependencies(confirmed=False):
             "unresolved": unresolved,
             "returncode": result.returncode,
             "output": ((result.stdout or "") + "\n" + (result.stderr or ""))[-4000:],
-            "note": "Solo se solicitaron dependencias NEXUS ausentes; no se actualizaron paquetes que ya estaban presentes de forma deliberada.",
+            "note": "Solo se solicitaron dependencias NEXUS ausentes; no se solicitaron actualizaciones de los paquetes principales ya presentes; pip puede ajustar dependencias transitivas si la resolución lo requiere.",
             "diagnostics_after": diagnostics(),
         }
     except subprocess.TimeoutExpired:
