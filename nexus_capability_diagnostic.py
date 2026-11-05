@@ -290,7 +290,7 @@ if iw:
         d = subprocess.run([iw,"dev"],capture_output=True,text=True,timeout=1.5)
         l = subprocess.run([iw,"list"],capture_output=True,text=True,timeout=1.5)
         combined=(d.stdout or "")+(d.stderr or "")+(l.stdout or "")+(l.stderr or "")
-        wireless_iw=re.findall(r"^\\s*Interface\\s+(\\S+)",d.stdout or "",re.M)
+        wireless_iw=re.findall(r"^\s*Interface\s+(\S+)",d.stdout or "",re.M)
         if d.returncode == 0 and l.returncode == 0: netlink="accessible"
         elif "generic netlink" in combined.lower() or "operation not permitted" in combined.lower(): netlink="blocked_or_unavailable"
         else: netlink="unavailable_or_error"
