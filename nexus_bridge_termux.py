@@ -17,7 +17,7 @@ from nexus_wireless_engine import inventory_tools, run_tool_module, _termux_wifi
 from nexus_plugin_manager import list_plugins, launch_plugin
 from nexus_security_audit import build_security_report
 from nexus_audit_baseline import compare_and_store_baseline
-from nexus_runtime_inventory import inventory as runtime_inventory, diagnostics as runtime_diagnostics, repair_owned_storage
+from nexus_runtime_inventory import inventory as runtime_inventory, diagnostics as runtime_diagnostics, repair_owned_storage, run_runtime_check
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
@@ -345,6 +345,22 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized(origin):
             return
         path = urlparse(self.path).path
+        if path == "/api/engines/run":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length < 1 or length > 1024:
+                    return self._reply(413, {"ok": False, "error": "Tamaño de solicitud no válido"}, origin)
+                data = json.loads(self.rfile.read(length))
+                if not isinstance(data, dict) or data.get("confirmed") is not True:
+                    return self._reply(403, {"ok": False, "error": "Confirma la prueba segura del motor."}, origin)
+                result = run_runtime_check(str(data.get("runtime_id", "")), confirmed=True)
+                return self._reply(200, result, origin)
+            except PermissionError as exc:
+                return self._reply(403, {"ok": False, "error": str(exc)}, origin)
+            except (ValueError, json.JSONDecodeError) as exc:
+                return self._reply(400, {"ok": False, "error": str(exc)}, origin)
+            except Exception as exc:
+                return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
         if path == "/api/maintenance/repair":
             try:
                 length = int(self.headers.get("Content-Length", "0"))
