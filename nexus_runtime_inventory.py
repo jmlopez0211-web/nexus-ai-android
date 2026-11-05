@@ -297,12 +297,18 @@ def run_runtime_check(runtime_id, confirmed=False):
         "perl": ("perl", ["-e", "print \"PERL_OK\\n\";"]),
         "lua": ("lua", ["-e", "print('LUA_OK')"]),
         "java": ("java", ["-version"]),
+        "r": ("R", ["--version"]),
+        "go": ("go", ["version"]),
+        "rust": ("rustc", ["--version"]),
+        "c-compiler": ("clang", ["--version"]),
+        "git": ("git", ["--version"]),
     }
     if runtime_id == "sqlite":
         try:
             with sqlite3.connect(":memory:") as connection:
+                connection.execute("PRAGMA query_only=ON")
                 value = connection.execute("SELECT 1").fetchone()[0]
-            return {"ok": value == 1, "id": "sqlite", "mode": "in_memory_read_only_smoke_test",
+            return {"ok": value == 1, "id": "sqlite", "mode": "in_memory_select_smoke_test",
                     "result": "SQLITE_OK" if value == 1 else "unexpected result"}
         except sqlite3.Error as exc:
             return {"ok": False, "id": "sqlite", "error": type(exc).__name__}
