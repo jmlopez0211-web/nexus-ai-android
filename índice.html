@@ -742,6 +742,42 @@ function capabilityValue(value){
  if(value===null||value===undefined||value==="")return "Desconocido";
  return String(value);
 }
+function capabilityState(value){
+ const labels={
+  visible:"VERIFICADO",
+  blocked_or_not_exposed:"BLOQUEADO / NO EXPUESTO",
+  blocked_or_unknown:"BLOQUEADO / NO VERIFICADO",
+  blocked_or_unavailable:"BLOQUEADO / NO DISPONIBLE",
+  accessible:"ACCESIBLE",
+  unknown:"DESCONOCIDO",
+  not_detected:"NO DETECTADO",
+  not_advertised_or_unknown:"NO ANUNCIADO / DESCONOCIDO",
+  advertised_not_functionally_verified:"ANUNCIADO POR EL CONTROLADOR; NO VERIFICADO",
+  unavailable_or_error:"NO DISPONIBLE / ERROR",
+  probe_error:"ERROR DE COMPROBACIÓN",
+  probe_failed:"FALLO DE CONSULTA",
+  timeout:"TIEMPO AGOTADO",
+  responded:"RESPONDIÓ A PRUEBA INOCUA",
+  no_response:"SIN RESPUESTA",
+  not_installed:"NO INSTALADO",
+  permission_denied:"PERMISO DENEGADO",
+  invalid_response:"RESPUESTA NO VÁLIDA",
+  execution_error:"ERROR DE EJECUCIÓN",
+  not_present:"NO PRESENTE",
+  restricted:"RESTRINGIDO"
+ };
+ if(value===null||value===undefined||value==="")return "DESCONOCIDO";
+ return labels[value]||String(value);
+}
+function capabilityRoot(value){
+ if(value===true)return "SÍ";
+ if(value===false)return "NO";
+ if(value==="not_root")return "NO (proceso sin UID 0)";
+ if(value==="not_inferred_from_proot")return "NO DEDUCIBLE DESDE PROOT";
+ if(value==="uid_zero_not_independently_verified")return "UID 0; ROOT ANDROID NO VERIFICADO";
+ if(value==="not_android_runtime")return "NO ES UN ENTORNO ANDROID";
+ return capabilityState(value);
+}
 function renderCapabilityEnvironment(root,title,data){
  const card=document.createElement("article");card.className="finding";
  const heading=document.createElement("h4");heading.textContent=title+" · "+(data.environment||data.status||"sin datos");
@@ -755,15 +791,15 @@ function renderCapabilityEnvironment(root,title,data){
  capabilityLine(card,"Kernel",data.kernel_release||"N/D");
  const privileges=data.privileges||{},caps=privileges.capabilities||{};
  capabilityLine(card,"UID / UID efectivo",String(privileges.uid??"N/D")+" / "+String(privileges.effective_uid??"N/D"));
- capabilityLine(card,"Root dentro de Proot",capabilityValue(privileges.root_in_proot));
- capabilityLine(card,"Root Android",capabilityValue(privileges.android_root));
+ capabilityLine(card,"Root dentro de Proot",capabilityRoot(privileges.root_in_proot));
+ capabilityLine(card,"Root Android",capabilityRoot(privileges.android_root));
  capabilityLine(card,"CAP_NET_ADMIN / CAP_NET_RAW",capabilityValue(caps.cap_net_admin)+" / "+capabilityValue(caps.cap_net_raw));
  const groups=(privileges.groups||[]).map(group=>group.name||("GID "+group.gid));
  capabilityLine(card,"Grupos efectivos",groups.length?groups.join(", "):"No disponibles");
  if(privileges.permission_note)capabilityLine(card,"Nota de privilegios",privileges.permission_note);
- capabilityLine(card,"Hardware / Netlink",(data.hardware_access?.status||"unknown")+" / "+(data.hardware_access?.iw_netlink||"unknown"));
- capabilityLine(card,"Modo monitor",data.monitor_mode?.status||"unknown");
- capabilityLine(card,"Inyección de paquetes",data.packet_injection?.status||"unknown");
+ capabilityLine(card,"Hardware / Netlink",capabilityState(data.hardware_access?.status)+" / "+capabilityState(data.hardware_access?.iw_netlink));
+ capabilityLine(card,"Modo monitor",capabilityState(data.monitor_mode?.status));
+ capabilityLine(card,"Inyección de paquetes",capabilityState(data.packet_injection?.status));
  if(data.hardware_access?.evidence)capabilityLine(card,"Evidencia de hardware",data.hardware_access.evidence);
  if(data.monitor_mode?.evidence)capabilityLine(card,"Evidencia de monitor",data.monitor_mode.evidence);
  if(data.packet_injection?.evidence)capabilityLine(card,"Evidencia de inyección",data.packet_injection.evidence);
@@ -778,7 +814,7 @@ function renderCapabilityEnvironment(root,title,data){
  });
  (data.device_permissions||[]).forEach(device=>{
   const access="lectura "+capabilityValue(device.readable)+" · escritura "+capabilityValue(device.writable);
-  capabilityLine(details,"Dispositivo "+device.path,device.status+" · "+access+" · modo "+(device.mode||"N/D"));
+  capabilityLine(details,"Dispositivo "+device.path,capabilityState(device.status)+" · "+access+" · modo "+(device.mode||"N/D"));
  });
  if(data.device_permission_note)capabilityLine(details,"Límite de permisos",data.device_permission_note);
  const interfaces=[...new Set([...(data.wireless_interfaces_sysfs||[]),...(data.wireless_interfaces_iw||[])])];
