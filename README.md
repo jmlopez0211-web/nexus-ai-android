@@ -156,3 +156,8 @@ Las pruebas de motor usan órdenes fijas de versión o pruebas inocuas. SQLite y
 El inventario también enumera las distribuciones instaladas en el intérprete Python activo y detecta las distros Proot presentes en el directorio estándar de Termux. La presencia de un ejecutable Python dentro de un rootfs se etiqueta como detectada, no como ejecución verificada: NEXUS no inicia automáticamente Ubuntu/Debian ni cambia sus entornos.
 
 El panel ofrece además una reparación de dependencias Python ausentes, con confirmación explícita. Solo instala las dependencias principales de NEXUS que no se detectan (Flask, Groq, Requests y Gunicorn); no ejecuta actualizaciones deliberadas de paquetes que ya están instalados. El proceso tiene límite de tiempo y registra el resultado sin mostrar claves.
+
+
+## Arranque automático y recuperación Android
+
+Consulta [README_TERMUX_AUTOSTART.md](README_TERMUX_AUTOSTART.md) para instalar Termux:Boot, el supervisor de reinicio y la comprobación de salud. Requiere una instalación inicial única en Termux por el aislamiento de aplicaciones de Android; después el arranque y la recuperación del puente son automáticos.
