@@ -13,10 +13,16 @@ class WifiCacheTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.original_path = bridge.WIFI_CACHE_FILE
+        self.original_cache = bridge.WIFI_CACHE
+        self.original_saved_at = bridge.WIFI_CACHE_SAVED_AT
+        bridge.WIFI_CACHE = []
+        bridge.WIFI_CACHE_SAVED_AT = 0.0
         bridge.WIFI_CACHE_FILE = os.path.join(self.temp_dir.name, "wifi-inventory.json")
 
     def tearDown(self):
         bridge.WIFI_CACHE_FILE = self.original_path
+        bridge.WIFI_CACHE = self.original_cache
+        bridge.WIFI_CACHE_SAVED_AT = self.original_saved_at
         self.temp_dir.cleanup()
 
     def test_cache_round_trip(self):
