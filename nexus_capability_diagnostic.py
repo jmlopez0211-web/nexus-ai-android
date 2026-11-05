@@ -276,15 +276,27 @@ def inspect_runtime(context: str = "termux") -> dict:
 
 
 _REMOTE_SCRIPT = r'''import json, os, platform, re, shutil, subprocess
-names = ("wacker", "hostapd-mana", "wifite", "eaphammer", "aircrack-ng", "airmon-ng", "airodump-ng", "aireplay-ng", "iw", "ip")
+definitions = (
+    ("Wacker", ("wacker.py", "wacker")),
+    ("hostapd-mana", ("hostapd-mana",)),
+    ("Wifite2", ("wifite", "wifite2")),
+    ("EAPHammer", ("eaphammer",)),
+    ("Aircrack-ng", ("aircrack-ng",)),
+    ("airmon-ng", ("airmon-ng",)),
+    ("airodump-ng", ("airodump-ng",)),
+    ("aireplay-ng", ("aireplay-ng",)),
+    ("iw", ("iw",)),
+    ("ip", ("ip",)),
+)
 args = {"iw": ["--version"], "ip": ["-Version"]}
 items = []
-for name in names:
-    path = shutil.which(name)
-    row = {"name": name, "installed": bool(path), "path": path, "executable_permission": bool(path and os.access(path, os.X_OK)), "execution_probe": "not_installed" if not path else "unknown", "exit_code": None}
+for display_name, commands in definitions:
+    path = next((shutil.which(name) for name in commands if shutil.which(name)), None)
+    row = {"name": display_name, "installed": bool(path), "path": path, "executable_permission": bool(path and os.access(path, os.X_OK)), "execution_probe": "not_installed" if not path else "unknown", "exit_code": None}
     if path and row["executable_permission"]:
+        command_name = next((name for name in commands if shutil.which(name)), commands[0])
         try:
-            p = subprocess.run([path] + args.get(name, ["--help"]), capture_output=True, text=True, timeout=1.2, check=False)
+            p = subprocess.run([path] + args.get(command_name, ["--help"]), capture_output=True, text=True, timeout=1.2, check=False)
             row["exit_code"] = p.returncode
             row["execution_probe"] = "responded" if p.returncode == 0 or p.stdout or p.stderr else "no_response"
         except subprocess.TimeoutExpired:
