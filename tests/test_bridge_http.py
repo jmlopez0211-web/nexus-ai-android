@@ -88,5 +88,30 @@ class BridgeHttpContractTests(unittest.TestCase):
         self.assertEqual(payload["networks"][0]["timestamp"], 115000000)
 
 
+    def test_capabilities_endpoint_is_authenticated_and_returns_dual_runtime_report(self):
+        payload = {
+            "ok": True,
+            "diagnostic": "NEXUS Hardware & Permissions Diagnostic",
+            "environments": {
+                "termux": {"context": "termux"},
+                "ubuntu_proot": {"available": True, "status": "ok"},
+            },
+            "safety": {"interfaces_changed": False, "frames_injected": False},
+        }
+        with patch.object(bridge, "build_capability_report", return_value=payload) as build:
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                self.request("/api/capabilities", token="wrong")
+            self.assertEqual(error.exception.code, 401)
+
+            with self.request("/api/capabilities") as response:
+                result = json.loads(response.read())
+
+        self.assertTrue(result["ok"])
+        self.assertIn("termux", result["environments"])
+        self.assertIn("ubuntu_proot", result["environments"])
+        self.assertFalse(result["safety"]["frames_injected"])
+        build.assert_called_once_with()
+
+
 if __name__ == "__main__":
     unittest.main()
