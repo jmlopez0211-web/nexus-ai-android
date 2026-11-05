@@ -28,6 +28,29 @@ class PrivilegeDiagnosticTests(unittest.TestCase):
         self.assertEqual(result["android_root"], "not_root")
 
 
+class DevicePermissionTests(unittest.TestCase):
+    def test_existing_device_node_reports_filesystem_access_bits(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as directory:
+            item = Path(directory) / "rfkill"
+            item.write_text("test", encoding="utf-8")
+            with patch.object(diag, "DEVICE_PERMISSION_PATHS", (str(item),)):
+                result = diag._device_permissions()
+        self.assertTrue(result[0]["exists"])
+        self.assertIn("readable", result[0])
+        self.assertIn("writable", result[0])
+        self.assertIn("mode", result[0])
+
+    def test_missing_device_node_is_not_claimed_available(self):
+        with patch.object(diag, "DEVICE_PERMISSION_PATHS", ("/path/that/does/not/exist/nexus",)):
+            result = diag._device_permissions()
+        self.assertFalse(result[0]["exists"])
+        self.assertEqual(result[0]["status"], "not_present")
+
+
+
+
 class ExecutableDiagnosticTests(unittest.TestCase):
     def test_missing_program_is_not_executable(self):
         definition = {"id": "iw", "commands": ("missing-tool",), "probe_args": ("--help",)}
