@@ -26,8 +26,42 @@ if [ ! -f "$CONFIG_DIR/bridge.conf" ]; then
   chmod 600 "$CONFIG_DIR/bridge.conf"
 fi
 rm -f "$DATA_DIR/STOP_BRIDGE"
+
+# Stop only an existing NEXUS bridge launched from this exact project folder.
+# This avoids the common "Address already in use" failure during first migration.
+"$PYTHON" - "$APP_DIR" <<'PY'
+import os
+import signal
+import sys
+import time
+root = os.path.realpath(sys.argv[1])
+me = {os.getpid(), os.getppid()}
+stopped = []
+try:
+    entries = os.listdir("/proc")
+except OSError:
+    entries = []
+for entry in entries:
+    if not entry.isdigit() or int(entry) in me:
+        continue
+    proc = "/proc/" + entry
+    try:
+        args = open(proc + "/cmdline", "rb").read().split(b"\\0")
+        cwd = os.path.realpath(proc + "/cwd")
+        names = [os.fsdecode(arg) for arg in args if arg]
+        if cwd == root and any(os.path.basename(arg) == "nexus_bridge_termux.py" for arg in names):
+            os.kill(int(entry), signal.SIGTERM)
+            stopped.append(int(entry))
+    except (OSError, ProcessLookupError, PermissionError):
+        pass
+if stopped:
+    time.sleep(1)
+    print("Instancias anteriores de NEXUS detenidas:", len(stopped))
+PY
+
 echo "NEXUS: arranque automático instalado."
 echo "El ahorro de batería sigue activo. Puedes activar el wakelock editando bridge.conf a KEEP_CPU_AWAKE=1."
 echo "Abre Termux:Boot una vez y configura Android para no suspender Termux/Termux:Boot."
+if ! cmd package path com.termux.boot >/dev/null 2>&1; then echo "AVISO: instala Termux:Boot desde la misma fuente que Termux y ábrelo una vez."; fi
 echo "Iniciando supervisor ahora…"
 nohup "$APP_DIR/nexus_bridge_supervisor.sh" >/dev/null 2>&1 </dev/null &
