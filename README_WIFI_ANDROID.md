@@ -92,3 +92,5 @@ El informe separa instalación (`installed`), permiso de ejecución (`executable
 Las consultas `iw dev` y `iw list` son de lectura. Si el controlador anuncia `monitor`, el resultado queda como `advertised_not_functionally_verified`: no se crea ni activa una interfaz. La inyección de paquetes se deja en `unknown`, porque una consulta pasiva no puede demostrarla y este diagnóstico no transmite tramas de prueba. No cambia interfaces, eleva privilegios ni captura credenciales.
 
 La comprobación de `termux-wifi-scaninfo` solo informa el número de resultados y omite SSID/BSSID del informe de capacidades.
+
+El diagnóstico muestra UID, grupos, CapEff y permisos POSIX de `/dev/rfkill`, `/dev/net/tun` y `/dev/bus/usb` cuando existen. Estos datos no sustituyen la comprobación de SELinux/kernel/controlador. Tampoco enumera todos los permisos Android de Termux:API; ubicación y Wi-Fi cercano figuran como no inspeccionables desde este proceso. Si Termux:API devuelve redes, el informe solo afirma que esa consulta concreta pudo obtener resultados.
