@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
-from nexus_wireless_engine import inventory_tools, run_tool_module
+from nexus_wireless_engine import inventory_tools, run_tool_module, _termux_wifi_command
 from nexus_plugin_manager import list_plugins, launch_plugin
 
 HOST = "127.0.0.1"
@@ -267,7 +267,7 @@ class Handler(BaseHTTPRequestHandler):
                 cache_age = max(0, int(time.time() - WIFI_CACHE_SAVED_AT)) if WIFI_CACHE_SAVED_AT else None
             return self._reply(200, {
                 "ok": True, "service": "NEXUS IA local bridge", "host": HOST, "port": PORT,
-                "wifi_api": bool(shutil.which("termux-wifi-scaninfo")),
+                "wifi_api": bool(_termux_wifi_command()),
                 "cached_networks": cached_count, "cache_age_seconds": cache_age,
                 "wifi_data_mode": "latest_android_scan_results",
             }, origin)
@@ -280,7 +280,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
         if path != "/api/wifi":
             return self._reply(404, {"ok": False, "error": "Ruta no encontrada"}, origin)
-        command = shutil.which("termux-wifi-scaninfo")
+        command = _termux_wifi_command()
         if not command:
             return self._reply(503, {"ok": False, "error": "No se encuentra termux-wifi-scaninfo. Instala Termux:API y concede permisos."}, origin)
         import subprocess
