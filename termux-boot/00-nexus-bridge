@@ -1,0 +1,27 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Termux:Boot entry point for NEXUS.
+set -u
+umask 077
+PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+HOME="${HOME:-/data/data/com.termux/files/home}"
+APP_DIR="$HOME/nexus-ai-android"
+DATA_DIR="$HOME/.cache/nexus-ai"
+SUPERVISOR="$APP_DIR/nexus_bridge_supervisor.sh"
+PID_FILE="$DATA_DIR/bridge-supervisor.pid"
+STOP_FILE="$DATA_DIR/STOP_BRIDGE"
+mkdir -p "$DATA_DIR"
+chmod 700 "$DATA_DIR"
+[ -f "$STOP_FILE" ] && rm -f "$STOP_FILE"
+if [ ! -x "$SUPERVISOR" ]; then
+  printf '[%s] NEXUS autostart: supervisor no instalado o no ejecutable\n' "$(date -Iseconds)" >> "$DATA_DIR/bridge-supervisor.log"
+  exit 1
+fi
+if [ -s "$PID_FILE" ]; then
+  OLD_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
+  if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then exit 0; fi
+fi
+# Wake lock is opt-in because it can increase battery consumption.
+if [ -f "$HOME/.config/nexus-ai/bridge.conf" ] && grep -qx 'KEEP_CPU_AWAKE=1' "$HOME/.config/nexus-ai/bridge.conf"; then
+  command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 || true
+fi
+nohup "$SUPERVISOR" >/dev/null 2>&1 </dev/null &
