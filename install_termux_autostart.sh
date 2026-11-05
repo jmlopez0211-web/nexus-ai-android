@@ -62,7 +62,9 @@ for entry in entries:
         args = open(proc + "/cmdline", "rb").read().split(b"\\0")
         cwd = os.path.realpath(proc + "/cwd")
         names = [os.fsdecode(arg) for arg in args if arg]
-        if cwd == root and any(os.path.basename(arg) == "nexus_bridge_termux.py" for arg in names):
+        bridge_args = any(os.path.basename(arg) == "nexus_bridge_termux.py" for arg in names)
+        exact_script = any(os.path.realpath(arg) == os.path.join(root, "nexus_bridge_termux.py") for arg in names)
+        if bridge_args and (cwd == root or exact_script):
             os.kill(int(entry), signal.SIGTERM)
             stopped.append(int(entry))
     except (OSError, ProcessLookupError, PermissionError):
