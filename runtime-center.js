@@ -15,7 +15,11 @@
   if(body){options.headers["Content-Type"]="application/json";options.body=JSON.stringify(body);}
   const response=await fetch(base()+path,{...options,signal:AbortSignal.timeout(timeout)});
   const data=await response.json().catch(()=>({error:"Respuesta no válida"}));
-  if(!response.ok)throw new Error(data.error||("HTTP "+response.status));
+  if(!response.ok){
+   if(response.status===404&&["/api/engines","/api/diagnostics","/api/engines/run","/api/maintenance/repair","/api/maintenance/repair-dependencies"].includes(path))
+    throw new Error("El puente local todavía usa una versión anterior. Hay que actualizar nexus_bridge_termux.py y nexus_runtime_inventory.py una vez y reiniciar el puente; después podrás gestionar estas funciones desde NEXUS.");
+   throw new Error(data.error||("HTTP "+response.status));
+  }
   return data;
  }
  function card(title,detail,extra){
