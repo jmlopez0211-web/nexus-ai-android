@@ -10,6 +10,7 @@ import socket
 from urllib.parse import urljoin, urlsplit
 
 import requests
+from requests.adapters import HTTPAdapter
 
 USER_AGENT = "NEXUS-IA-Defensive-Audit/2.0"
 TIMEOUT = (3.05, 8)
@@ -20,7 +21,8 @@ class AuditInputError(ValueError):
     pass
 
 
-def _validate_public_http_url(url: str) -> str:
+def _resolve_public_http_target(url: str):
+    """Validate a public URL and return its DNS answers for IP-pinned requests."""
     if not isinstance(url, str) or len(url) > 2048:
         raise AuditInputError("Introduce una URL válida (máximo 2048 caracteres).")
     parts = urlsplit(url.strip())
@@ -28,8 +30,12 @@ def _validate_public_http_url(url: str) -> str:
         raise AuditInputError("Solo se admiten direcciones completas http:// o https://.")
     if parts.username or parts.password:
         raise AuditInputError("No incluyas credenciales dentro de la URL.")
-    host = parts.hostname.rstrip(".")
-    if host.lower() in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
+    try:
+        port = parts.port or (443 if parts.scheme == "https" else 80)
+    except ValueError as exc:
+        raise AuditInputError("El puerto de la URL no es válido.") from exc
+    host = parts.hostname.rstrip(".").lower()
+    if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
         raise AuditInputError("El análisis remoto no admite destinos locales o privados.")
     try:
         addresses = {ipaddress.ip_address(host)}
@@ -37,15 +43,46 @@ def _validate_public_http_url(url: str) -> str:
         try:
             addresses = {
                 ipaddress.ip_address(item[4][0])
-                for item in socket.getaddrinfo(host, parts.port or (443 if parts.scheme == "https" else 80),
-                                               type=socket.SOCK_STREAM)
+                for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
             }
         except (OSError, ValueError):
             raise AuditInputError("No se pudo resolver el dominio.")
     if not addresses or any(not address.is_global for address in addresses):
         raise AuditInputError("Por seguridad, el servidor solo analiza dominios públicos.")
-    return parts.geturl()
+    normalized = parts._replace(fragment="").geturl()
+    ordered = sorted(addresses, key=lambda address: (address.version != 4, address.compressed))
+    return normalized, tuple(ordered)
 
+
+def _validate_public_http_url(url: str) -> str:
+    """Compatibility wrapper used by validation tests and redirect checks."""
+    return _resolve_public_http_target(url)[0]
+
+
+class _PinnedIPAdapter(HTTPAdapter):
+    """Connect to the IP validated by DNS while retaining the original Host and TLS name."""
+
+    def __init__(self, hostname: str, ip_address: str, port: int):
+        super().__init__(max_retries=0)
+        self.hostname = hostname
+        self.ip_address = ip_address
+        self.port = port
+
+    def get_connection_with_tls_context(self, request, verify, proxies=None, cert=None):
+        # The audit intentionally does not route through environment-configured proxies.
+        if proxies and any(proxies.values()):
+            raise AuditInputError("No se permiten proxies en la auditoría HTTP defensiva.")
+        host_params, pool_kwargs = self.build_connection_pool_key_attributes(
+            request, verify, cert
+        )
+        host_params["host"] = self.ip_address
+        host_params["port"] = self.port
+        if request.url.lower().startswith("https://"):
+            pool_kwargs["assert_hostname"] = self.hostname
+            pool_kwargs["server_hostname"] = self.hostname
+        return self.poolmanager.connection_from_host(
+            **host_params, pool_kwargs=pool_kwargs
+        )
 
 def _set_cookie_headers(response):
     raw = getattr(response, "raw", None)
@@ -157,34 +194,49 @@ def inspect_response(response, url):
 
 
 def audit_url(url: str) -> dict:
-    """Inspect a single public URL with safe redirect validation and bounded requests."""
-    current = _validate_public_http_url(url)
+    """Inspect a single public URL, pinning each validated DNS answer to prevent rebinding."""
+    current = url
     history = []
     for hop in range(MAX_REDIRECTS + 1):
-        # Revalidate DNS and destination on every hop; do not follow redirects automatically.
-        current = _validate_public_http_url(current)
-        response = requests.get(
-            current,
-            headers={"User-Agent": USER_AGENT, "Range": "bytes=0-0"},
-            timeout=TIMEOUT,
-            allow_redirects=False,
-            stream=True,
-            verify=True,
+        current, addresses = _resolve_public_http_target(current)
+        parts = urlsplit(current)
+        port = parts.port or (443 if parts.scheme == "https" else 80)
+        chosen_ip = addresses[0].compressed
+        session = requests.Session()
+        session.trust_env = False
+        session.mount(
+            parts.scheme + "://",
+            _PinnedIPAdapter(parts.hostname, chosen_ip, port),
         )
-        history.append({"url": current, "status_code": response.status_code})
-        if response.status_code in (301, 302, 303, 307, 308):
-            location = response.headers.get("Location")
-            response.close()
-            if not location:
-                raise AuditInputError("El servidor devolvió una redirección sin destino.")
-            if hop == MAX_REDIRECTS:
-                raise AuditInputError("Se alcanzó el límite de redirecciones.")
-            current = urljoin(current, location)
-            continue
+        response = None
         try:
+            host_header = parts.netloc
+            response = session.get(
+                current,
+                headers={
+                    "User-Agent": USER_AGENT,
+                    "Range": "bytes=0-0",
+                    "Host": host_header,
+                },
+                timeout=TIMEOUT,
+                allow_redirects=False,
+                stream=True,
+                verify=True,
+            )
+            history.append({"url": current, "status_code": response.status_code})
+            if response.status_code in (301, 302, 303, 307, 308):
+                location = response.headers.get("Location")
+                if not location:
+                    raise AuditInputError("El servidor devolvió una redirección sin destino.")
+                if hop == MAX_REDIRECTS:
+                    raise AuditInputError("Se alcanzó el límite de redirecciones.")
+                current = urljoin(current, location)
+                continue
             result = inspect_response(response, current)
+            result["redirect_chain"] = history
+            return result
         finally:
-            response.close()
-        result["redirect_chain"] = history
-        return result
+            if response is not None:
+                response.close()
+            session.close()
     raise AuditInputError("No se pudo completar la comprobación.")
