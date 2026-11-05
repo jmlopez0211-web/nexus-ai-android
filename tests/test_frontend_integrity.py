@@ -42,7 +42,7 @@ class FrontendIntegrityTests(unittest.TestCase):
         self.assertTrue(manifest.get("start_url"))
         worker = (ROOT / "service-worker.js").read_text(encoding="utf-8")
         self.assertIn('if (url.pathname.startsWith("/api/")) return;', worker)
-        self.assertIn('const CACHE_NAME = "nexus-shell-v3";', worker)
+        self.assertIn('const CACHE_NAME = "nexus-shell-v4";', worker)
         self.assertIn('"/runtime-center.js"', worker)
 
     def test_runtime_center_javascript_parses(self):
@@ -55,6 +55,32 @@ class FrontendIntegrityTests(unittest.TestCase):
         html = (ROOT / "índice.html").read_text(encoding="utf-8")
         self.assertIn('<script src="/runtime-center.js" defer></script>', html)
 
+
+
+    def test_termux_autostart_scripts_have_valid_bash_syntax(self):
+        bash = shutil.which("bash")
+        if not bash:
+            self.skipTest("Bash no está disponible en este entorno")
+        scripts = [
+            ROOT / "nexus_bridge_supervisor.sh",
+            ROOT / "install_termux_autostart.sh",
+            ROOT / "nexus_bridge_stop.sh",
+            ROOT / "nexus_bridge_start.sh",
+            ROOT / "termux-boot" / "00-nexus-bridge",
+        ]
+        for script in scripts:
+            result = subprocess.run([bash, "-n", str(script)], capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode, 0, f"{script.name}: {result.stderr}")
+
+    def test_termux_supervisor_and_boot_installation_are_integrated(self):
+        supervisor = (ROOT / "nexus_bridge_supervisor.sh").read_text(encoding="utf-8")
+        installer = (ROOT / "install_termux_autostart.sh").read_text(encoding="utf-8")
+        bridge = (ROOT / "nexus_bridge_termux.py").read_text(encoding="utf-8")
+        self.assertIn("FAILURES", supervisor)
+        self.assertIn("health check", supervisor.lower())
+        self.assertIn("nexus-bridge", installer)
+        self.assertIn("/api/bridge/control", bridge)
+        self.assertIn("supervisor_active", bridge)
 
     def test_baseline_change_tracking_and_professional_report_are_integrated(self):
         html = (ROOT / "índice.html").read_text(encoding="utf-8")

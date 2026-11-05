@@ -44,6 +44,10 @@ def load_bridge_token():
     return token
 
 TOKEN = load_bridge_token()
+DATA_DIR = os.path.join(os.path.expanduser("~"), ".cache", "nexus-ai")
+SUPERVISOR_PID_FILE = os.path.join(DATA_DIR, "bridge-supervisor.pid")
+STOP_FILE = os.path.join(DATA_DIR, "STOP_BRIDGE")
+SERVER = None
 ALLOWED_ORIGINS = {
     item.strip() for item in os.environ.get(
         "NEXUS_ALLOWED_ORIGINS",
@@ -63,6 +67,22 @@ WIFI_CACHE_FILE = os.path.join(os.path.expanduser("~"), ".cache", "nexus-ai", "w
 WIFI_CACHE_TTL_SECONDS = 900
 WIFI_CACHE_LOCK = threading.RLock()
 WIFI_SCAN_LOCK = threading.Lock()
+
+
+def supervisor_is_active():
+    try:
+        with open(SUPERVISOR_PID_FILE, "r", encoding="utf-8") as pid_file:
+            pid = int(pid_file.read().strip())
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def shutdown_bridge_after_response():
+    time.sleep(0.35)
+    if SERVER is not None:
+        SERVER.shutdown()
 
 
 def load_wifi_cache():
@@ -275,6 +295,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._reply(200, {
                 "ok": True, "service": "NEXUS IA local bridge", "host": HOST, "port": PORT,
                 "wifi_api": bool(_termux_wifi_command()),
+                "supervisor_active": supervisor_is_active(),
+                "automatic_restart": supervisor_is_active(),
                 "cached_networks": cached_count, "cache_age_seconds": cache_age,
                 "wifi_data_mode": "latest_android_scan_results",
             }, origin)
@@ -345,6 +367,31 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized(origin):
             return
         path = urlparse(self.path).path
+        if path == "/api/bridge/control":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length < 1 or length > 1024:
+                    return self._reply(413, {"ok": False, "error": "Tamaño de solicitud no válido"}, origin)
+                data = json.loads(self.rfile.read(length))
+                if not isinstance(data, dict) or data.get("action") not in ("restart", "stop"):
+                    return self._reply(400, {"ok": False, "error": "Acción no válida"}, origin)
+                action = data["action"]
+                supervised = supervisor_is_active()
+                if action == "restart" and not supervised:
+                    return self._reply(409, {"ok": False, "error": "El supervisor automático no está activo. Instala Termux:Boot y el arranque automático una vez."}, origin)
+                if action == "stop" and supervised:
+                    os.makedirs(DATA_DIR, mode=0o700, exist_ok=True)
+                    fd = os.open(STOP_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                    os.close(fd)
+                result = {"ok": True, "action": action,
+                          "message": ("El puente se reiniciará automáticamente." if action == "restart" else "El puente se detendrá; el supervisor no lo volverá a iniciar hasta el próximo arranque de Android.")}
+                self._reply(200, result, origin)
+                threading.Thread(target=shutdown_bridge_after_response, daemon=True).start()
+                return
+            except (ValueError, json.JSONDecodeError) as exc:
+                return self._reply(400, {"ok": False, "error": str(exc)}, origin)
+            except Exception as exc:
+                return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
         if path == "/api/engines/run":
             try:
                 length = int(self.headers.get("Content-Length", "0"))
@@ -447,7 +494,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
+    global SERVER
     server = ThreadingHTTPServer((HOST, PORT), Handler)
+    SERVER = server
     print(f"NEXUS bridge: http://{HOST}:{PORT} (solo loopback)")
     print("Token privado cargado desde NEXUS_BRIDGE_TOKEN o ~/.nexus_bridge_token; no se muestra.")
     print("No publiques ni reenvíes el puerto 8766.")

@@ -333,11 +333,13 @@ Nexus-Lab-2026!</textarea>
   <p class="muted">Inventario real del Samsung/Termux. Las consultas son de solo lectura; las pruebas ejecutan únicamente comprobaciones fijas y seguras.</p>
   <div class="audit-actions">
     <button type="button" id="nexus-runtime-inventory">Inventario completo</button>
+    <button type="button" id="nexus-bridge-restart" disabled>Reiniciar puente automáticamente</button>
     <button type="button" id="nexus-runtime-diagnostics">Diagnosticar sistema</button>
     <button type="button" id="nexus-runtime-repair">Reparación segura</button>
     <button type="button" id="nexus-dependency-repair">Reparar dependencias faltantes</button>
     <button type="button" id="nexus-runtime-export" disabled>Exportar informe</button>
   </div>
+  <p id="nexus-bridge-supervisor-status" class="muted" role="status" aria-live="polite">Estado de arranque automático sin comprobar.</p>
   <p id="nexus-runtime-status" class="muted" role="status" aria-live="polite">Conecta el puente local para consultar los motores instalados.</p>
   <div id="nexus-runtime-summary"></div>
   <h3>Motores de ejecución</h3><div id="nexus-runtime-list"></div>
