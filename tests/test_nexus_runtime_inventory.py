@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from types import SimpleNamespace
 
 import nexus_runtime_inventory as runtime
 
@@ -32,6 +33,34 @@ class RuntimeInventoryTests(unittest.TestCase):
     def test_runtime_test_requires_confirmation(self):
         with self.assertRaises(PermissionError):
             runtime.run_runtime_check("python")
+
+
+    def test_dependency_repair_requires_confirmation(self):
+        with self.assertRaises(PermissionError):
+            runtime.repair_missing_dependencies()
+
+    def test_dependency_repair_skips_pip_when_everything_is_installed(self):
+        with patch.object(runtime, "_missing_app_dependencies", return_value=[]), \
+             patch.object(runtime, "diagnostics", return_value={"ok": True}), \
+             patch.object(runtime.subprocess, "run") as run:
+            result = runtime.repair_missing_dependencies(confirmed=True)
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["changed"])
+        run.assert_not_called()
+
+    def test_dependency_repair_uses_only_fixed_requirements_without_shell(self):
+        with patch.object(runtime, "_missing_app_dependencies",
+                          return_value=[("groq", "groq>=0.11,<2")]), \
+             patch.object(runtime.importlib.util, "find_spec", return_value=object()), \
+             patch.object(runtime, "diagnostics", return_value={"ok": True}), \
+             patch.object(runtime.subprocess, "run",
+                          return_value=SimpleNamespace(returncode=0, stdout="installed", stderr="")) as run:
+            result = runtime.repair_missing_dependencies(confirmed=True)
+        self.assertTrue(result["ok"])
+        args, kwargs = run.call_args
+        self.assertIn("groq>=0.11,<2", args[0])
+        self.assertFalse(kwargs["shell"])
+        self.assertEqual(kwargs["timeout"], 180)
 
     def test_repair_requires_confirmation(self):
         with self.assertRaises(PermissionError):
