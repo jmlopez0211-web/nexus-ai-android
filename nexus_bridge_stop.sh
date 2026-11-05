@@ -12,4 +12,4 @@ if [ -s "$DATA_DIR/bridge-supervisor.pid" ]; then
   PID="$(cat "$DATA_DIR/bridge-supervisor.pid" 2>/dev/null || true)"
   case "$PID" in ''|*[!0-9]*) ;; *) kill -TERM "$PID" 2>/dev/null || true ;; esac
 fi
-echo "NEXUS bridge detenido. El arranque automático queda desactivado hasta el próximo reinicio del dispositivo o nueva instalación."
+echo "NEXUS bridge detenido. El supervisor no volverá a iniciar el puente hasta el próximo reinicio de Android o hasta ejecutar nexus_bridge_start.sh."
