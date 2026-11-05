@@ -42,7 +42,7 @@
     catch(e){results.prepend(card(item.name+" · Error",e.message));}
     finally{b.disabled=false;b.textContent="Probar motor";}
    });
-   b.disabled=!item.installed||!["python","node","bash","php","java","ruby","perl","lua"].includes(item.id);
+   b.disabled=!item.installed||!["python","node","bash","php","java","ruby","perl","lua","r","go","rust","c-compiler","git"].includes(item.id);
    runtimeRoot.append(card(item.name,detail,b));
   });
   (data.sql_engines||[]).forEach(item=>{
