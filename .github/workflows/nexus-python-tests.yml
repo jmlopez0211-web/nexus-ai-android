@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [feature/nexus-evolution-2026-11]
+    branches: [feature/nexus-evolution-2026-11, feature/nexus-security-audit-2026-11]
 
 jobs:
   python-tests:
