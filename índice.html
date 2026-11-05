@@ -194,6 +194,15 @@ footer{color:#62798a;border-color:#d7e4ed}
     <div class="audit-actions"><button id="scan-local-host" type="button">Comprobar puertos TCP</button><button id="export-local-scan" type="button" disabled>Exportar inventario</button></div>
     <p id="local-scan-status" class="muted" role="status" aria-live="polite">Sin escaneo local.</p>
     <div id="local-scan-results"></div>
+    <div class="notice" style="margin-top:12px"><strong>Auditoría detallada HTTP/TLS</strong><br>Además de los puertos TCP, consulta únicamente GET / en servicios web detectados. No inicia sesión, no sigue redirecciones, no guarda el cuerpo ni los valores de cookies. La validación TLS se informa por separado.</div>
+    <div class="audit-actions">
+      <button id="audit-local-host" type="button">Ejecutar auditoría detallada</button>
+      <button id="export-local-audit-json" type="button" disabled>Exportar JSON</button>
+      <button id="export-local-audit-html" type="button" disabled>Exportar HTML</button>
+      <button id="print-local-audit" type="button" disabled>Vista para PDF</button>
+    </div>
+    <p id="local-audit-status" class="muted" role="status" aria-live="polite">Sin auditoría detallada.</p>
+    <div id="local-audit-results" aria-live="polite"></div>
   </div>
   <section class="panel" id="nexus-python-engine" aria-labelledby="nexus-python-engine-title">
     <h3 id="nexus-python-engine-title">Motor Python independiente · Herramientas y módulos</h3>
@@ -872,6 +881,187 @@ async function scanNexusPorts(){
   document.getElementById("export-local-scan").disabled=false;
  }catch(error){status.textContent="No se pudo completar el escaneo local: "+error.message+". Comprueba que el puente NEXUS está activo, el token es correcto y el origen HTTPS tiene permiso para acceder a localhost.";}
  finally{button.disabled=false;button.textContent="Comprobar puertos TCP";}
+}
+</script>
+
+<script>
+/* NEXUS detailed local security audit: safe rendering and secret-free exports. */
+let latestLocalSecurityAudit = null;
+const localAuditButton = document.getElementById("audit-local-host");
+localAuditButton.addEventListener("click", runNexusSecurityAudit);
+document.getElementById("export-local-audit-json").addEventListener("click", () => {
+  if (!latestLocalSecurityAudit) return;
+  downloadLocalAudit("nexus-auditoria-seguridad.json",
+    JSON.stringify(latestLocalSecurityAudit, null, 2), "application/json");
+});
+document.getElementById("export-local-audit-html").addEventListener("click", () => {
+  if (!latestLocalSecurityAudit) return;
+  downloadLocalAudit("nexus-auditoria-seguridad.html",
+    buildLocalAuditHtml(latestLocalSecurityAudit), "text/html");
+});
+document.getElementById("print-local-audit").addEventListener("click", () => {
+  if (!latestLocalSecurityAudit) return;
+  const view = window.open("", "_blank");
+  if (!view) {
+    document.getElementById("local-audit-status").textContent =
+      "El navegador bloqueó la ventana. Permite ventanas emergentes para abrir la vista imprimible.";
+    return;
+  }
+  view.document.open();
+  view.document.write(buildLocalAuditHtml(latestLocalSecurityAudit));
+  view.document.close();
+});
+function downloadLocalAudit(filename, content, mime) {
+  const blob = new Blob([content], {type:mime+";charset=utf-8"});
+  const url = URL.createObjectURL(blob), anchor = document.createElement("a");
+  anchor.href = url; anchor.download = filename; anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function auditEscape(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[character]);
+}
+function buildLocalAuditHtml(report) {
+  const services = (report.services || []).map(service => {
+    const headers = Object.entries(service.headers || {}).map(([name,value]) =>
+      "<tr><th>"+auditEscape(name)+"</th><td>"+auditEscape(value)+"</td></tr>").join("");
+    const cookies = (service.cookies || []).map(cookie =>
+      "<li>"+auditEscape(cookie.name)+": Secure="+Boolean(cookie.secure)+
+      ", HttpOnly="+Boolean(cookie.httponly)+", SameSite="+auditEscape(cookie.samesite || "no indicado")+"</li>").join("");
+    const cert = service.certificate || {};
+    const tls = service.tls || {};
+    return "<section><h3>"+auditEscape(service.scheme.toUpperCase())+" · puerto "+auditEscape(service.port)+
+      "</h3><p>HTTP: "+auditEscape(service.http_status ?? "sin respuesta")+
+      " · TLS: "+auditEscape(tls.status || "no aplicable")+"</p>"+
+      (headers ? "<table>"+headers+"</table>" : "")+
+      (cookies ? "<h4>Atributos de cookies (sin valores)</h4><ul>"+cookies+"</ul>" : "")+
+      (service.certificate ? "<h4>Certificado</h4><p>"+auditEscape(cert.subject || "Sujeto no disponible")+
+      "<br>Emisor: "+auditEscape(cert.issuer || "no disponible")+
+      "<br>Válido hasta: "+auditEscape(cert.not_after || "no disponible")+
+      "<br>SHA-256: "+auditEscape(cert.sha256_fingerprint || "no disponible")+
+      "<br>SAN: "+auditEscape(cert.subject_alt_name_present === null ? "no determinado" : cert.subject_alt_name_present ? "presente" : "ausente")+
+      "<br>Firma: "+auditEscape(cert.signature_algorithm || "no identificada")+
+      "<br>Clave: "+auditEscape(cert.public_key_algorithm || "no identificada")+
+      " "+auditEscape(cert.public_key_bits || "")+"</p>" : "")+"</section>";
+  }).join("");
+  const findings = (report.findings || []).map(item =>
+    "<article><h3>"+auditEscape(item.severity.toUpperCase())+" · "+auditEscape(item.title)+
+    "</h3><p>"+auditEscape(item.evidence)+"</p><p><strong>Recomendación:</strong> "+
+    auditEscape(item.recommendation)+"</p><p>Clasificación: "+auditEscape(item.classification)+
+    " · Vulnerabilidad confirmada: no</p></article>").join("");
+  const controls = (report.security_controls_observed || []).map(item =>
+    "<li>"+auditEscape(item.control)+" (puerto "+auditEscape(item.target)+"): "+
+    auditEscape(item.evidence)+"</li>").join("");
+  return "<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Informe NEXUS</title><style>"+
+    "body{font:15px system-ui,sans-serif;max-width:900px;margin:32px auto;padding:0 18px;color:#173247}"+
+    "h1,h2{color:#075f57}section,article{border:1px solid #ccdbe4;border-radius:10px;padding:14px;margin:12px 0}"+
+    "table{border-collapse:collapse;width:100%}td,th{text-align:left;vertical-align:top;padding:7px;border-bottom:1px solid #dce6ec;overflow-wrap:anywhere}"+
+    "th{width:35%}.muted{color:#526779}@media print{body{margin:0;max-width:none}section,article{break-inside:avoid}}</style></head><body>"+
+    "<h1>NEXUS AI · Informe de auditoría defensiva</h1><p>Destino: "+auditEscape(report.target)+
+    " · Generado: "+auditEscape(report.generated_at)+"</p><p>Puertos TCP abiertos: "+
+    auditEscape(report.summary.open_tcp_ports)+" / "+auditEscape(report.summary.ports_checked)+
+    " · Servicios web inspeccionados: "+auditEscape(report.summary.web_services_inspected)+
+    " · Vulnerabilidades confirmadas: 0</p><p class='muted'>Observaciones de configuración y evidencias. No se enviaron credenciales ni se guardaron valores de cookies.</p>"+
+    "<h2>Servicios web</h2>"+(services || "<p>No se detectaron servicios HTTP/HTTPS en los puertos comprobados.</p>")+
+    "<h2>Controles observados</h2><ul>"+controls+"</ul><h2>Hallazgos y recomendaciones</h2>"+
+    (findings || "<p>No se generaron hallazgos adicionales.</p>")+
+    "<h2>Alcance y limitaciones</h2><ul>"+(report.limitations || []).map(x=>"<li>"+auditEscape(x)+"</li>").join("")+
+    "</ul></body></html>";
+}
+function renderLocalSecurityAudit(report) {
+  const root = document.getElementById("local-audit-results");
+  root.replaceChildren();
+  const summary = document.createElement("p");
+  summary.className = "notice";
+  summary.textContent = report.summary.open_tcp_ports+" puertos abiertos de "+
+    report.summary.ports_checked+" comprobados · "+
+    report.summary.web_services_inspected+" servicios web inspeccionados · "+
+    report.findings.length+" observaciones · 0 vulnerabilidades confirmadas.";
+  root.append(summary);
+  (report.services || []).forEach(service => {
+    const card = document.createElement("article");
+    card.className = "finding";
+    const title = document.createElement("h4");
+    title.textContent = service.scheme.toUpperCase()+" · "+service.port+
+      " · HTTP "+(service.http_status ?? "sin respuesta");
+    const detail = document.createElement("p");
+    const headers = Object.keys(service.headers || {});
+    detail.textContent = "Cabeceras seguras observadas: "+
+      (headers.length ? headers.join(", ") : "ninguna de la lista comprobada")+
+      ". TLS: "+((service.tls || {}).status || "no aplicable")+".";
+    card.append(title, detail);
+    if (service.certificate) {
+      const cert = document.createElement("p");
+      cert.textContent = "Certificado SHA-256: "+(service.certificate.sha256_fingerprint || "no disponible")+
+        " · SAN: "+(service.certificate.subject_alt_name_present === null ? "no determinado" :
+        service.certificate.subject_alt_name_present ? "presente" : "ausente");
+      card.append(cert);
+    }
+    (service.cookies || []).forEach(cookie => {
+      const line = document.createElement("p");
+      line.textContent = "Cookie "+cookie.name+" · Secure: "+(cookie.secure?"sí":"no")+
+        " · HttpOnly: "+(cookie.httponly?"sí":"no")+
+        " · SameSite: "+(cookie.samesite || "no indicado")+
+        ". El valor no se ha almacenado.";
+      card.append(line);
+    });
+    root.append(card);
+  });
+  (report.findings || []).forEach(item => {
+    const card = document.createElement("article");
+    card.className = "finding "+(item.severity==="medium"?"medium":item.severity==="low"?"low":"info");
+    const title = document.createElement("h4");
+    title.textContent = item.severity.toUpperCase()+" · "+item.title;
+    const evidence = document.createElement("p");
+    evidence.textContent = "Evidencia: "+item.evidence;
+    const recommendation = document.createElement("p");
+    recommendation.textContent = "Recomendación: "+item.recommendation;
+    const classification = document.createElement("p");
+    classification.textContent = "Clasificación: "+item.classification+
+      " · Vulnerabilidad confirmada: no.";
+    card.append(title, evidence, recommendation, classification);
+    root.append(card);
+  });
+}
+async function runNexusSecurityAudit() {
+  const status = document.getElementById("local-audit-status");
+  const target = document.getElementById("nexus-scan-target").value.trim();
+  const token = getBridgeToken();
+  if (!target) { status.textContent = "Introduce la IP privada del equipo."; return; }
+  if (!document.getElementById("nexus-scan-authorized").checked) {
+    status.textContent = "Confirma primero que tienes autorización."; return;
+  }
+  if (!token) { status.textContent = "No se ha encontrado el token local guardado."; return; }
+  localAuditButton.disabled = true;
+  localAuditButton.textContent = "Auditando…";
+  status.textContent = "Comprobando puertos y metadatos HTTP/TLS del único equipo indicado…";
+  document.getElementById("local-audit-results").replaceChildren();
+  latestLocalSecurityAudit = null;
+  ["export-local-audit-json","export-local-audit-html","print-local-audit"].forEach(id =>
+    document.getElementById(id).disabled = true);
+  try {
+    const response = await fetch(getWifiBridgeUrl()+"/api/audit", {
+      method:"POST", mode:"cors", cache:"no-store",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+      body:JSON.stringify({target,authorized:true}),
+      signal:AbortSignal.timeout(30000)
+    });
+    const data = await response.json();
+    if (!response.ok || data.ok !== true || data.report_type !== "defensive_single_host_security_audit")
+      throw new Error(data.error || ("HTTP "+response.status));
+    latestLocalSecurityAudit = data;
+    renderLocalSecurityAudit(data);
+    ["export-local-audit-json","export-local-audit-html","print-local-audit"].forEach(id =>
+      document.getElementById(id).disabled = false);
+    status.textContent = "Auditoría completada para "+data.target+". Revisa las observaciones: no equivalen automáticamente a vulnerabilidades.";
+  } catch (error) {
+    status.textContent = "No se pudo completar la auditoría: "+error.message+
+      ". Comprueba que el puente actualizado esté activo.";
+  } finally {
+    localAuditButton.disabled = false;
+    localAuditButton.textContent = "Ejecutar auditoría detallada";
+  }
 }
 </script>
 

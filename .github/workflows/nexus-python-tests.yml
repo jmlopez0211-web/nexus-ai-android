@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [feature/nexus-evolution-2026-11]
+    branches: [feature/nexus-evolution-2026-11, feature/nexus-security-audit-2026-11]
 
 jobs:
   python-tests:
@@ -19,4 +19,4 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
       - name: Compile all Python application modules
-        run: python -m py_compile app.py main.py audit_engine.py nexus_wifi_bridge.py nexus_wireless_engine.py nexus_bridge_termux.py nexus_plugin_manager.py
+        run: python -m py_compile app.py main.py audit_engine.py nexus_wifi_bridge.py nexus_wireless_engine.py nexus_bridge_termux.py nexus_plugin_manager.py nexus_security_audit.py

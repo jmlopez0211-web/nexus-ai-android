@@ -109,3 +109,18 @@ python main.py
 - No habilitar análisis de objetivos sin autorización.
 - La auditoría web no acepta IP privadas, loopback ni nombres locales.
 - El historial del panel se guarda en el almacenamiento local del navegador y puede borrarse desde sus ajustes.
+
+
+## Auditoría local detallada HTTP/TLS
+
+La ruta autenticada `POST /api/audit` amplía el inventario TCP de un único equipo IPv4 privado con una inspección defensiva de los servicios web encontrados en los puertos HTTP/HTTPS incluidos en la lista NEXUS.
+
+- Requiere el mismo token local y `authorized: true` que el escaneo TCP existente.
+- Solo consulta `GET /` sin credenciales, no sigue redirecciones y no lee ni almacena el cuerpo de la respuesta.
+- Recoge una lista limitada de cabeceras de seguridad, atributos de cookies (nunca sus valores) y metadatos públicos del certificado TLS.
+- La validación TLS estándar se informa separadamente. Si falla, la conexión sin validar se utiliza solo para inspeccionar metadatos públicos; nunca se envían credenciales.
+- Los hallazgos se etiquetan como observaciones de configuración, validación de confianza o comprobaciones incompletas. No se presentan como vulnerabilidades confirmadas.
+- La interfaz permite exportar JSON y HTML, además de abrir una vista imprimible que el navegador puede guardar como PDF.
+- El alcance sigue limitado a una sola IPv4 RFC1918 y a los puertos TCP predefinidos. No recorre subredes ni intenta iniciar sesión.
+
+Los informes excluyen valores de cookies, tokens, contraseñas y cuerpos de respuesta. La inspección no modifica el equipo auditado.
