@@ -58,6 +58,25 @@ class DetailedAuditEndpointTests(unittest.TestCase):
         scan_mock.assert_called_once_with("192.168.1.1")
         report_mock.assert_called_once_with("192.168.1.1", scan, bridge.PORTS)
 
+    def test_comparison_endpoint_stores_and_returns_baseline_deltas(self):
+        scan = {"target": "192.168.1.1", "open_count": 1, "scanned_ports": 20,
+                "open_ports": [{"port": 443, "service": "HTTPS"}]}
+        report = {"ok": True, "target": "192.168.1.1", "services": [], "scan": scan}
+        tracking = {"status": "baseline_created", "changes": [], "compared": False}
+        with patch.object(bridge, "scan_host", return_value=scan), \\
+             patch.object(bridge, "build_security_report", return_value=report), \\
+             patch.object(bridge, "compare_and_store_baseline", return_value=tracking) as compare:
+            request = urllib.request.Request(
+                self.url + "/api/audit/compare",
+                data=json.dumps({"target": "192.168.1.1", "authorized": True}).encode(),
+                headers={"Authorization": "Bearer audit-test-token", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=3) as response:
+                result = json.loads(response.read())
+        self.assertEqual(result["change_tracking"]["status"], "baseline_created")
+        compare.assert_called_once_with(report)
+
 
 if __name__ == "__main__":
     unittest.main()
