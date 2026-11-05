@@ -808,8 +808,8 @@ function renderCapabilityEnvironment(root,title,data){
  details.append(summary);
  (data.tools||[]).forEach(tool=>{
   capabilityLine(details,tool.name,
-   (tool.installed?"instalado":"no instalado")+" · permiso de ejecución: "+capabilityValue(tool.executable_permission)+
-   " · prueba inocua: "+(tool.execution_probe||"unknown")+
+   (tool.installed?"INSTALADO / EN PATH":"NO INSTALADO O NO EN PATH")+" · permiso de ejecución: "+capabilityValue(tool.executable_permission)+
+   " · prueba inocua: "+capabilityState(tool.execution_probe)+
    (tool.path?" · "+tool.path:""));
  });
  (data.device_permissions||[]).forEach(device=>{
