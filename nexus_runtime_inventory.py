@@ -47,7 +47,12 @@ RUNTIMES = (
 TOOLS = (
     ("nmap", "Nmap", ("nmap",), "Inventario de red autorizado"),
     ("aircrack-ng", "Aircrack-ng", ("aircrack-ng",), "Auditoría inalámbrica; detección solamente"),
+    ("airmon-ng", "Airmon-ng", ("airmon-ng",), "Gestión de interfaces monitor; detección solamente"),
+    ("airodump-ng", "Airodump-ng", ("airodump-ng",), "Inventario inalámbrico; detección solamente"),
+    ("aireplay-ng", "Aireplay-ng", ("aireplay-ng",), "Herramienta de pruebas inalámbricas; detección solamente"),
+    ("wifite", "Wifite2", ("wifite", "wifite2"), "Auditoría inalámbrica; detección solamente"),
     ("iw", "iw", ("iw",), "Información de interfaces inalámbricas"),
+    ("iwconfig", "iwconfig", ("iwconfig",), "Información inalámbrica heredada"),
     ("ip", "iproute2", ("ip",), "Información de interfaces y rutas"),
     ("curl", "cURL", ("curl",), "Comprobación HTTP"),
     ("wget", "Wget", ("wget",), "Descarga HTTP"),
@@ -112,6 +117,24 @@ def _python_packages():
             found[name] = False
     return found
 
+def _read_plugin_registry():
+    registry = HOME / ".nexus-ai" / "plugins" / "registry.json"
+    try:
+        entries = json.loads(registry.read_text(encoding="utf-8"))
+        if not isinstance(entries, list):
+            return {"registry_managed_by": "nexus_plugin_manager", "items": [], "error": "registro_no_es_lista"}
+        return {"registry_managed_by": "nexus_plugin_manager", "registry_path": str(registry),
+                "execution_requires_approval": True,
+                "items": [{"id": str(item.get("id", "")), "name": str(item.get("name", item.get("id", ""))),
+                           "approved": item.get("approved") is True, "entrypoint": str(item.get("entrypoint", ""))}
+                          for item in entries if isinstance(item, dict)]}
+    except FileNotFoundError:
+        return {"registry_managed_by": "nexus_plugin_manager", "registry_path": str(registry),
+                "execution_requires_approval": True, "items": []}
+    except (OSError, ValueError, TypeError):
+        return {"registry_managed_by": "nexus_plugin_manager", "registry_path": str(registry),
+                "execution_requires_approval": True, "items": [], "error": "registro_no_legible"}
+
 def inventory():
     runtimes = []
     for key, name, commands, purpose in RUNTIMES:
@@ -127,17 +150,26 @@ def inventory():
         path = _which(commands)
         tools.append({
             "id": key, "name": name, "purpose": purpose,
-            "installed": bool(path), "path": path, "version": _version(path),
+            "installed": bool(path), "path": path,
+            "version": "detectada; no ejecutada" if path else None,
             "execution_policy": "inventory_only",
         })
 
     modules = []
+    known_paths = set()
     for module_id, name, path in INTERNAL_MODULES:
+        known_paths.add(path)
         present = Path(path).is_file()
         modules.append({
             "id": module_id, "name": name, "path": path,
             "present": present, "status": "disponible" if present else "no encontrado",
         })
+
+    for source in sorted(Path.cwd().glob("*.py")):
+        if source.name not in known_paths:
+            modules.append({"id": "project:" + source.stem, "name": source.name,
+                            "path": source.name, "present": True,
+                            "status": "archivo Python del proyecto; no ejecutado"})
 
     sql = []
     for key, name, module, kind, purpose in SQL_ENGINES:
@@ -170,7 +202,7 @@ def inventory():
         },
         "runtimes": runtimes, "sql_engines": sql, "tools": tools,
         "internal_modules": modules, "python_modules": _python_packages(),
-        "plugins": {"registry_managed_by": "nexus_plugin_manager", "execution_requires_approval": True},
+        "plugins": _read_plugin_registry(),
         "policy": {
             "inventory_read_only": True,
             "unknown_plugins_auto_executed": False,
