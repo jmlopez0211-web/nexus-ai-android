@@ -773,8 +773,10 @@ function renderCapabilityEnvironment(root,title,data){
    " · prueba inocua: "+(tool.execution_probe||"unknown")+
    (tool.path?" · "+tool.path:""));
  });
- const interfaces=(data.wireless_interfaces_sysfs||data.network_interfaces||[]);
- capabilityLine(details,"Interfaces visibles",interfaces.length?interfaces.join(", "):"Ninguna interfaz inalámbrica confirmada");
+ const interfaces=[...new Set([...(data.wireless_interfaces_sysfs||[]),...(data.wireless_interfaces_iw||[])])];
+ const allInterfaces=data.network_interfaces||[];
+ capabilityLine(details,"Interfaces de red visibles",allInterfaces.length?allInterfaces.join(", "):"Ninguna visible");
+ capabilityLine(details,"Interfaces Wi-Fi confirmadas",interfaces.length?interfaces.join(", "):"Ninguna confirmada por sysfs/iw");
  card.append(details);root.append(card);
 }
 async function checkHardwareCapabilities(){
