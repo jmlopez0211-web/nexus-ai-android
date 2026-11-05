@@ -66,6 +66,32 @@ class BridgeHttpContractTests(unittest.TestCase):
             payload = json.loads(response.read())
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["wifi_data_mode"], "latest_android_scan_results")
+        self.assertIn("supervisor_active", payload)
+        self.assertIn("automatic_restart", payload)
+
+
+    def test_restart_control_requires_an_active_supervisor(self):
+        request = urllib.request.Request(
+            self.url + "/api/bridge/control",
+            data=json.dumps({"action": "restart"}).encode("utf-8"),
+            headers={"Authorization": "Bearer unit-test-token", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with patch.object(bridge, "supervisor_is_active", return_value=False):
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                urllib.request.urlopen(request, timeout=3)
+        self.assertEqual(error.exception.code, 409)
+
+    def test_bridge_control_rejects_invalid_actions(self):
+        request = urllib.request.Request(
+            self.url + "/api/bridge/control",
+            data=json.dumps({"action": "arbitrary"}).encode("utf-8"),
+            headers={"Authorization": "Bearer unit-test-token", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            urllib.request.urlopen(request, timeout=3)
+        self.assertEqual(error.exception.code, 400)
 
     def test_preflight_allows_authorization_and_private_network(self):
         with self.request("/api/wifi", token=None, origin=self.origin, method="OPTIONS") as response:
