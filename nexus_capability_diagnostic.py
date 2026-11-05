@@ -245,11 +245,26 @@ def inspect_runtime(context: str = "termux") -> dict:
     environment = "Ubuntu Proot" if context == "ubuntu_proot" else (
         "Termux / Android" if "com.termux" in os.environ.get("PREFIX", "") else platform.platform()
     )
+    wifi_api = next((item for item in tools if item["id"] == "termux_wifi_api"), None)
+    api_probe = (wifi_api or {}).get("execution_probe")
+    api_count = (wifi_api or {}).get("network_count", 0)
+    android_permissions = {
+        "termux_wifi_api_command": "available" if (wifi_api or {}).get("installed") else "not_available",
+        "current_wifi_query": (
+            "returned_results" if api_probe == "responded" and api_count > 0 else
+            "valid_empty_response" if api_probe == "responded" else "not_verified"
+        ),
+        "location_permission": "not_directly_inspectable",
+        "nearby_wifi_permission": "not_directly_inspectable",
+        "other_android_permissions": "not_enumerated",
+        "note": "Termux no expone de forma fiable todo el estado de permisos Android desde este proceso. Una respuesta Wi-Fi con resultados solo demuestra que esta consulta pudo devolverlos.",
+    } if context == "termux" else {"status": "not_applicable_to_ubuntu_proot"}
     return {
         "context": context, "environment": environment,
         "python_version": platform.python_version(), "kernel_release": platform.release(),
         "architecture": platform.machine(), "tools": tools,
         "privileges": inspect_privileges(context),
+        "android_permissions": android_permissions,
         "device_permissions": _device_permissions(),
         "device_permission_note": "Los permisos POSIX mostrados no prueban que SELinux, el kernel o el controlador permitan usar el dispositivo.",
         "network_interfaces": names,
@@ -361,7 +376,7 @@ if iw:
         iw_error=(d.stderr or l.stderr or "")[:240] or None
     except Exception as e:
         netlink="probe_error"; iw_error=type(e).__name__
-print(json.dumps({"environment":"Ubuntu Proot","python_version":platform.python_version(),"kernel_release":platform.release(),"architecture":platform.machine(),"tools":items,"privileges":{"uid":uid,"effective_uid":euid,"uid_zero_in_current_namespace":euid==0,"root_in_proot":euid==0,"android_root":"not_inferred_from_proot","group_ids":group_ids,"groups":groups,"capabilities":{"effective_hex":m.group(1).lower() if m else None,"cap_net_admin":bool(cap & (1<<12)) if cap is not None else None,"cap_net_raw":bool(cap & (1<<13)) if cap is not None else None},"permission_note":"UID 0 corresponde al namespace Proot; no equivale a root Android."},"device_permissions":device_access,"device_permission_note":"Los permisos POSIX no prueban acceso concedido por SELinux/kernel/controlador.","network_interfaces":interfaces,"wireless_interfaces_iw":wireless_iw,"wireless_phy_sysfs":phys,"hardware_access":{"status":"visible" if phys else ("blocked_or_not_exposed" if netlink=="blocked_or_unavailable" else "not_detected"),"iw_netlink":netlink,"evidence":iw_error or "Consultas sysfs e iw."},"monitor_mode":monitor,"packet_injection":{"status":"unknown","verified":False,"evidence":"No se envían tramas de prueba ni se realizan ataques."}},ensure_ascii=False))'''
+print(json.dumps({"environment":"Ubuntu Proot","python_version":platform.python_version(),"kernel_release":platform.release(),"architecture":platform.machine(),"tools":items,"privileges":{"uid":uid,"effective_uid":euid,"uid_zero_in_current_namespace":euid==0,"root_in_proot":euid==0,"android_root":"not_inferred_from_proot","group_ids":group_ids,"groups":groups,"capabilities":{"effective_hex":m.group(1).lower() if m else None,"cap_net_admin":bool(cap & (1<<12)) if cap is not None else None,"cap_net_raw":bool(cap & (1<<13)) if cap is not None else None},"permission_note":"UID 0 corresponde al namespace Proot; no equivale a root Android."},"android_permissions":{"status":"not_applicable_to_ubuntu_proot"},"device_permissions":device_access,"device_permission_note":"Los permisos POSIX no prueban acceso concedido por SELinux/kernel/controlador.","network_interfaces":interfaces,"wireless_interfaces_iw":wireless_iw,"wireless_phy_sysfs":phys,"hardware_access":{"status":"visible" if phys else ("blocked_or_not_exposed" if netlink=="blocked_or_unavailable" else "not_detected"),"iw_netlink":netlink,"evidence":iw_error or "Consultas sysfs e iw."},"monitor_mode":monitor,"packet_injection":{"status":"unknown","verified":False,"evidence":"No se envían tramas de prueba ni se realizan ataques."}},ensure_ascii=False))'''
 
 
 def inspect_ubuntu_proot(timeout: int = PROOT_TIMEOUT_SECONDS) -> dict:
