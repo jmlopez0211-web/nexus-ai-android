@@ -42,7 +42,7 @@ class FrontendIntegrityTests(unittest.TestCase):
         self.assertTrue(manifest.get("start_url"))
         worker = (ROOT / "service-worker.js").read_text(encoding="utf-8")
         self.assertIn('if (url.pathname.startsWith("/api/")) return;', worker)
-        self.assertIn('const CACHE_NAME = "nexus-shell-v3";', worker)
+        self.assertIn('const CACHE_NAME = "nexus-shell-v4";', worker)
         self.assertIn('"/runtime-center.js"', worker)
 
     def test_runtime_center_javascript_parses(self):
