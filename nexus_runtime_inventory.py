@@ -374,3 +374,59 @@ def run_runtime_check(runtime_id, confirmed=False):
         return {"ok": False, "id": runtime_id, "error": "timeout"}
     except OSError as exc:
         return {"ok": False, "id": runtime_id, "error": type(exc).__name__}
+
+
+REQUIRED_APP_DEPENDENCIES = (
+    ("flask", "Flask>=3.0,<4"),
+    ("groq", "groq>=0.11,<2"),
+    ("requests", "requests>=2.32.2,<3"),
+    ("gunicorn", "gunicorn>=22,<24"),
+)
+
+def _missing_app_dependencies():
+    missing = []
+    for module, requirement in REQUIRED_APP_DEPENDENCIES:
+        try:
+            available = importlib.util.find_spec(module) is not None
+        except (ImportError, ModuleNotFoundError, ValueError):
+            available = False
+        if not available:
+            missing.append((module, requirement))
+    return missing
+
+def repair_missing_dependencies(confirmed=False):
+    """Install only missing, fixed NEXUS runtime requirements after user approval."""
+    if confirmed is not True:
+        raise PermissionError("La reparación de dependencias requiere confirmación explícita.")
+    missing = _missing_app_dependencies()
+    if not missing:
+        return {
+            "ok": True, "changed": False, "installed": [],
+            "note": "Todas las dependencias principales de NEXUS ya están disponibles. No se ha ejecutado pip.",
+            "diagnostics_after": diagnostics(),
+        }
+    requirements = [requirement for _, requirement in missing]
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
+             "--no-input", *requirements],
+            capture_output=True, text=True, timeout=180, check=False, shell=False,
+            env={**os.environ, "PIP_DISABLE_PIP_VERSION_CHECK": "1"},
+        )
+        unresolved = [module for module, _ in missing if importlib.util.find_spec(module) is None]
+        return {
+            "ok": result.returncode == 0 and not unresolved,
+            "changed": result.returncode == 0,
+            "installed": [module for module, _ in missing if module not in unresolved],
+            "unresolved": unresolved,
+            "returncode": result.returncode,
+            "output": ((result.stdout or "") + "\\n" + (result.stderr or ""))[-4000:],
+            "note": "Solo se solicitaron dependencias NEXUS ausentes; no se actualizaron paquetes que ya estaban presentes de forma deliberada.",
+            "diagnostics_after": diagnostics(),
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "changed": False, "error": "timeout",
+                "note": "La instalación superó 180 segundos. Revisa conectividad y vuelve a diagnosticar."}
+    except OSError as exc:
+        return {"ok": False, "changed": False, "error": type(exc).__name__,
+                "note": "No se pudo iniciar pip en el intérprete Python activo."}
