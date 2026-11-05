@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexus-shell-v1";
+const CACHE_NAME = "nexus-shell-v2";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/nexus-icon.svg"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));

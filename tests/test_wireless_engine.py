@@ -67,5 +67,27 @@ class WirelessEngineInventoryTests(unittest.TestCase):
         self.assertTrue(checks)
         self.assertTrue(all(item["ok"] for item in checks))
 
+    def test_scan_timestamp_age_is_calculated_without_exposing_network_identity(self):
+        clock_id = getattr(engine.time, "CLOCK_BOOTTIME", None)
+        if clock_id is None:
+            self.skipTest("CLOCK_BOOTTIME is not available on this platform")
+        with patch.object(engine.time, "clock_gettime", return_value=120.0):
+            age = engine._latest_wifi_scan_age_seconds([
+                {"ssid": "private-network", "timestamp": 115000000}
+            ])
+        self.assertEqual(age, 5)
+
+    def test_wifi_report_explains_that_termux_api_reads_latest_android_results(self):
+        mock = Mock(returncode=0, stdout='[{"ssid":"private-name","timestamp":115000000}]', stderr="")
+        clock_id = getattr(engine.time, "CLOCK_BOOTTIME", None)
+        with patch.object(engine.shutil, "which", return_value="/usr/bin/termux-wifi-scaninfo"), \
+             patch.object(engine.subprocess, "run", return_value=mock), \
+             patch.object(engine.time, "clock_gettime", return_value=120.0):
+            result = engine._wifi_api_check()
+        self.assertEqual(result["source"], "live")
+        self.assertEqual(result["scan_age_seconds"], 5)
+        self.assertEqual(result["scan_api_mode"], "latest_android_results_only")
+        self.assertNotIn("private-name", str(result))
+
 if __name__ == "__main__":
     unittest.main()

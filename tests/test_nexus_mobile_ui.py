@@ -46,9 +46,11 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertNotIn(r'if(!/^https?:\\/\\//i.test(value))', self.html)
 
     def test_wifi_scan_distinguishes_cached_and_empty_results(self):
-        self.assertIn("Inventario local recuperado de caché", self.html)
-        self.assertIn("última lectura válida de esta sesión", self.html)
-        self.assertIn("termux-wifi-scaninfo", self.html)
+        self.assertIn("Inventario local de respaldo", self.html)
+        self.assertIn("last_nonempty_api_response_at", self.html)
+        self.assertIn("scan_age_seconds", self.html)
+        self.assertIn("Se conserva el inventario de esta sesión", self.html)
+        self.assertIn("Termux:API consulta los resultados Wi-Fi que Android tiene disponibles", self.html)
 
     def test_all_bridge_actions_use_the_shared_token_reader(self):
         self.assertIn("function getBridgeToken()", self.html)

@@ -47,7 +47,7 @@ class MainApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["respuesta"], "Respuesta de prueba")
         self.assertEqual(client.chat.completions.create.call_args.kwargs["model"], "openai/gpt-oss-120b")
-        groq_class.assert_called_once_with(api_key="test-secret")
+        groq_class.assert_called_once_with(api_key="test-secret", timeout=30.0, max_retries=0)
         client.chat.completions.create.assert_called_once()
 
     @patch("main.Groq")

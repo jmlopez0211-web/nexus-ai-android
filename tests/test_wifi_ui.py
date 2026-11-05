@@ -40,5 +40,16 @@ class WifiUiFeatureTests(unittest.TestCase):
         self.assertNotIn("async async function askNexus()", self.html)
 
 
+    def test_wifi_ui_distinguishes_live_and_cached_inventory_and_protects_token_destination(self):
+        self.assertIn('mode:meta.mode||"unknown"', self.html)
+        self.assertIn('source:meta.source||"unknown"', self.html)
+        self.assertIn("last_nonempty_api_response_at", self.html)
+        self.assertIn("scan_age_seconds", self.html)
+        self.assertIn('["127.0.0.1","localhost"].includes(parsed.hostname)', self.html)
+        self.assertIn("Esta consulta lee los resultados disponibles", self.html)
+        self.assertNotIn('mode:"live",count:nexusWifiInventory.length', self.html)
+
+
+
 if __name__ == "__main__":
     unittest.main()

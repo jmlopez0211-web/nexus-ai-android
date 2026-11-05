@@ -37,6 +37,8 @@ def _wireless_interfaces():
 
 def inspect_environment():
     utilities = {name: bool(shutil.which(name)) for name in SAFE_UTILITIES}
+    api_command = _termux_wifi_command()
+    utilities["termux-wifi-scaninfo"] = bool(api_command)
     interfaces = _wireless_interfaces()
     try:
         phy_visible = any(Path("/sys/class/ieee80211").iterdir())
@@ -45,7 +47,10 @@ def inspect_environment():
     return {
         "python_version": platform.python_version(), "platform": platform.system(),
         "machine": platform.machine() or platform.architecture()[0],
-        "termux_api_cli": utilities["termux-wifi-scaninfo"], "iw_available": utilities["iw"],
+        "termux_api_cli": utilities["termux-wifi-scaninfo"],
+        "wifi_scan_api_mode": "latest_android_results_only",
+        "active_radio_scan_trigger": False,
+        "iw_available": utilities["iw"],
         "ip_available": utilities["ip"], "airmon_ng_available": utilities["airmon-ng"],
         "wireless_interfaces_visible": interfaces, "wireless_phy_visible": phy_visible,
         "monitor_mode_supported": None, "packet_injection_supported": None,
@@ -96,6 +101,31 @@ def _termux_wifi_command():
     return None
 
 
+def _latest_wifi_scan_age_seconds(networks):
+    """Estimate age from Android ScanResult.timestamp (microseconds since boot)."""
+    timestamps = []
+    for item in networks:
+        try:
+            value = int(item.get("timestamp", 0))
+            if value > 0:
+                timestamps.append(value)
+        except (AttributeError, TypeError, ValueError):
+            continue
+    if not timestamps:
+        return None
+    try:
+        clock_id = getattr(time, "CLOCK_BOOTTIME", None)
+        if clock_id is None:
+            return None
+        elapsed = time.clock_gettime(clock_id)
+        age_seconds = elapsed - max(timestamps) / 1_000_000
+        if age_seconds < 0 or age_seconds > 7 * 24 * 60 * 60:
+            return None
+        return int(age_seconds)
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
 def _wifi_api_check(timeout=25):
     command = _termux_wifi_command()
     if not command:
@@ -116,10 +146,15 @@ def _wifi_api_check(timeout=25):
         payload = json.loads(result.stdout or "[]")
         if not isinstance(payload, list):
             raise ValueError("Respuesta no válida")
-        count = sum(1 for item in payload if isinstance(item, dict))
+        networks = [item for item in payload if isinstance(item, dict)]
+        count = len(networks)
+        scan_age = _latest_wifi_scan_age_seconds(networks)
         if count:
             return {"available": True, "ok": True, "network_count": count, "source": "live",
-                    "command_path": command, "message": "Termux:API respondió y entregó redes en esta consulta."}
+                    "scan_age_seconds": scan_age,
+                    "scan_api_mode": "latest_android_results_only",
+                    "command_path": command,
+                    "message": "Termux:API respondió. Android entregó los últimos resultados disponibles; esta consulta no inicia por sí sola un nuevo escaneo de radio."}
 
         # Android puede aplicar limitación de escaneos y devolver [] temporalmente.
         # Reutiliza únicamente el último inventario no vacío del puente, con TTL.
@@ -131,7 +166,10 @@ def _wifi_api_check(timeout=25):
             age = max(0, int(time.time() - saved_at))
             if isinstance(networks, list) and networks and age <= 900:
                 return {"available": True, "ok": True, "network_count": len(networks),
-                        "source": "cache", "cache_age_seconds": age, "command_path": command,
+                        "source": "cache", "cache_age_seconds": age,
+                        "scan_age_seconds": _latest_wifi_scan_age_seconds(networks),
+                        "scan_api_mode": "latest_android_results_only",
+                        "command_path": command,
                         "message": "Android no entregó redes nuevas; se utiliza el último inventario válido guardado por el puente."}
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             pass

@@ -42,5 +42,19 @@ class NexusApiTests(unittest.TestCase):
         audit.assert_called_once_with("https://example.org/")
 
 
+    def test_ai_request_uses_bounded_provider_timeout_and_no_automatic_retries(self):
+        from unittest.mock import Mock
+        fake_client = Mock()
+        fake_client.chat.completions.create.return_value.choices = [
+            Mock(message=Mock(content="NEXUS listo"))
+        ]
+        with patch.dict(os.environ, {"GROQ_API_KEY": "test-key"}), \
+             patch("main.Groq", return_value=fake_client) as groq:
+            response = self.client.post("/api/ask", json={"tarea": "Comprueba el estado"})
+        self.assertEqual(response.status_code, 200)
+        groq.assert_called_once_with(api_key="test-key", timeout=30.0, max_retries=0)
+        fake_client.chat.completions.create.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
