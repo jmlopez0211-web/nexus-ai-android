@@ -154,3 +154,5 @@ El catálogo detecta Python, Node.js, Bash, PHP, Java, Ruby, Perl, Lua, R, Go, R
 Las pruebas de motor usan órdenes fijas de versión o pruebas inocuas. SQLite y DuckDB usan bases de datos en memoria; PostgreSQL y MySQL se inventarían, pero no se conectan sin una configuración explícita. Los plugins existentes conservan su aprobación individual y se ejecutan con los permisos de Termux; el lanzador no es un sandbox.
 
 El inventario también enumera las distribuciones instaladas en el intérprete Python activo y detecta las distros Proot presentes en el directorio estándar de Termux. La presencia de un ejecutable Python dentro de un rootfs se etiqueta como detectada, no como ejecución verificada: NEXUS no inicia automáticamente Ubuntu/Debian ni cambia sus entornos.
+
+El panel ofrece además una reparación de dependencias Python ausentes, con confirmación explícita. Solo instala las dependencias principales de NEXUS que no se detectan (Flask, Groq, Requests y Gunicorn); no ejecuta actualizaciones deliberadas de paquetes que ya están instalados. El proceso tiene límite de tiempo y registra el resultado sin mostrar claves.
