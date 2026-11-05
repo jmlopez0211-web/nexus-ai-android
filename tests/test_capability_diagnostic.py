@@ -51,6 +51,16 @@ class DevicePermissionTests(unittest.TestCase):
 
 
 
+class ToolCatalogTests(unittest.TestCase):
+    def test_initial_and_existing_wireless_tools_are_all_in_inventory(self):
+        ids = {item["id"] for item in diag.TOOL_DEFINITIONS}
+        self.assertTrue({
+            "wacker", "hostapd_mana", "wifite2", "eaphammer",
+            "aircrack_ng", "airmon_ng", "airodump_ng", "aireplay_ng",
+            "iw", "ip", "termux_wifi_api",
+        }.issubset(ids))
+
+
 class ExecutableDiagnosticTests(unittest.TestCase):
     def test_missing_program_is_not_executable(self):
         definition = {"id": "iw", "commands": ("missing-tool",), "probe_args": ("--help",)}
