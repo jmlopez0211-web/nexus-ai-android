@@ -63,8 +63,8 @@ class DetailedAuditEndpointTests(unittest.TestCase):
                 "open_ports": [{"port": 443, "service": "HTTPS"}]}
         report = {"ok": True, "target": "192.168.1.1", "services": [], "scan": scan}
         tracking = {"status": "baseline_created", "changes": [], "compared": False}
-        with patch.object(bridge, "scan_host", return_value=scan), \\
-             patch.object(bridge, "build_security_report", return_value=report), \\
+        with patch.object(bridge, "scan_host", return_value=scan), \
+             patch.object(bridge, "build_security_report", return_value=report), \
              patch.object(bridge, "compare_and_store_baseline", return_value=tracking) as compare:
             request = urllib.request.Request(
                 self.url + "/api/audit/compare",
