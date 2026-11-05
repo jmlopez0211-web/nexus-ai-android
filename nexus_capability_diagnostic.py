@@ -17,6 +17,7 @@ from pathlib import Path
 DIAGNOSTIC_VERSION = "1.0.0"
 COMMAND_TIMEOUT_SECONDS = 1.5
 PROOT_TIMEOUT_SECONDS = 18
+DEVICE_PERMISSION_PATHS = ("/dev/rfkill", "/dev/net/tun", "/dev/bus/usb")
 
 TOOL_DEFINITIONS = (
     {"id": "wacker", "name": "Wacker", "commands": ("wacker.py", "wacker"), "probe_args": ("--help",), "environment": "either"},
@@ -50,6 +51,32 @@ def _capability_bits(status_text: str) -> dict:
             "cap_net_admin": bool(value & (1 << 12)),
             "cap_net_raw": bool(value & (1 << 13)),
             "note": "Bits declarados por el namespace actual; en Proot no prueban privilegios reales del kernel Android."}
+
+
+def _device_permissions() -> list[dict]:
+    """Report filesystem access bits only; this is not proof of driver access."""
+    result = []
+    for raw_path in DEVICE_PERMISSION_PATHS:
+        path = Path(raw_path)
+        try:
+            info = path.stat()
+            is_directory = path.is_dir()
+            readable = os.access(path, os.R_OK)
+            writable = os.access(path, os.W_OK)
+            searchable = os.access(path, os.X_OK) if is_directory else None
+            result.append({
+                "path": raw_path, "exists": True, "directory": is_directory,
+                "mode": oct(info.st_mode & 0o777), "owner_uid": info.st_uid,
+                "owner_gid": info.st_gid, "readable": readable,
+                "writable": writable, "searchable": searchable,
+                "status": "accessible" if readable or writable or searchable else "restricted",
+            })
+        except FileNotFoundError:
+            result.append({"path": raw_path, "exists": False, "status": "not_present"})
+        except OSError as exc:
+            result.append({"path": raw_path, "exists": None, "status": "unknown",
+                           "error": type(exc).__name__})
+    return result
 
 
 def _groups() -> list[dict]:
@@ -222,7 +249,10 @@ def inspect_runtime(context: str = "termux") -> dict:
         "context": context, "environment": environment,
         "python_version": platform.python_version(), "kernel_release": platform.release(),
         "architecture": platform.machine(), "tools": tools,
-        "privileges": inspect_privileges(context), "network_interfaces": names,
+        "privileges": inspect_privileges(context),
+        "device_permissions": _device_permissions(),
+        "device_permission_note": "Los permisos POSIX mostrados no prueban que SELinux, el kernel o el controlador permitan usar el dispositivo.",
+        "network_interfaces": names,
         "wireless_interfaces_sysfs": [name for name in names if Path(f"/sys/class/net/{name}/wireless").exists()],
         "wireless_interfaces_iw": iw["wireless_interfaces"],
         "wireless_phy_sysfs": phys,
@@ -274,6 +304,18 @@ try:
 except AttributeError:
     uid = euid = None
 interfaces, phys = [], []
+device_access = []
+for path in ("/dev/rfkill", "/dev/net/tun", "/dev/bus/usb"):
+    try:
+        info = os.stat(path)
+        is_dir = os.path.isdir(path)
+        rd, wr = os.access(path, os.R_OK), os.access(path, os.W_OK)
+        sx = os.access(path, os.X_OK) if is_dir else None
+        device_access.append({"path":path,"exists":True,"directory":is_dir,"mode":oct(info.st_mode & 0o777),"owner_uid":info.st_uid,"owner_gid":info.st_gid,"readable":rd,"writable":wr,"searchable":sx,"status":"accessible" if rd or wr or sx else "restricted"})
+    except FileNotFoundError:
+        device_access.append({"path":path,"exists":False,"status":"not_present"})
+    except OSError as e:
+        device_access.append({"path":path,"exists":None,"status":"unknown","error":type(e).__name__})
 try:
     interfaces = sorted(os.listdir("/sys/class/net"))
 except OSError:
@@ -300,7 +342,7 @@ if iw:
         iw_error=(d.stderr or l.stderr or "")[:240] or None
     except Exception as e:
         netlink="probe_error"; iw_error=type(e).__name__
-print(json.dumps({"environment":"Ubuntu Proot","python_version":platform.python_version(),"kernel_release":platform.release(),"architecture":platform.machine(),"tools":items,"privileges":{"uid":uid,"effective_uid":euid,"uid_zero_in_current_namespace":euid==0,"root_in_proot":euid==0,"android_root":"not_inferred_from_proot","capabilities":{"effective_hex":m.group(1).lower() if m else None,"cap_net_admin":bool(cap & (1<<12)) if cap is not None else None,"cap_net_raw":bool(cap & (1<<13)) if cap is not None else None},"permission_note":"UID 0 corresponde al namespace Proot; no equivale a root Android."},"network_interfaces":interfaces,"wireless_interfaces_iw":wireless_iw,"wireless_phy_sysfs":phys,"hardware_access":{"status":"visible" if phys else ("blocked_or_not_exposed" if netlink=="blocked_or_unavailable" else "not_detected"),"iw_netlink":netlink,"evidence":iw_error or "Consultas sysfs e iw."},"monitor_mode":monitor,"packet_injection":{"status":"unknown","verified":False,"evidence":"No se envían tramas de prueba ni se realizan ataques."}},ensure_ascii=False))'''
+print(json.dumps({"environment":"Ubuntu Proot","python_version":platform.python_version(),"kernel_release":platform.release(),"architecture":platform.machine(),"tools":items,"privileges":{"uid":uid,"effective_uid":euid,"uid_zero_in_current_namespace":euid==0,"root_in_proot":euid==0,"android_root":"not_inferred_from_proot","capabilities":{"effective_hex":m.group(1).lower() if m else None,"cap_net_admin":bool(cap & (1<<12)) if cap is not None else None,"cap_net_raw":bool(cap & (1<<13)) if cap is not None else None},"permission_note":"UID 0 corresponde al namespace Proot; no equivale a root Android."},"device_permissions":device_access,"device_permission_note":"Los permisos POSIX no prueban acceso concedido por SELinux/kernel/controlador.","network_interfaces":interfaces,"wireless_interfaces_iw":wireless_iw,"wireless_phy_sysfs":phys,"hardware_access":{"status":"visible" if phys else ("blocked_or_not_exposed" if netlink=="blocked_or_unavailable" else "not_detected"),"iw_netlink":netlink,"evidence":iw_error or "Consultas sysfs e iw."},"monitor_mode":monitor,"packet_injection":{"status":"unknown","verified":False,"evidence":"No se envían tramas de prueba ni se realizan ataques."}},ensure_ascii=False))'''
 
 
 def inspect_ubuntu_proot(timeout: int = PROOT_TIMEOUT_SECONDS) -> dict:
