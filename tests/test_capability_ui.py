@@ -27,6 +27,8 @@ class CapabilityDiagnosticUiTests(unittest.TestCase):
     def test_ui_reports_proot_monitor_and_injection_without_claiming_them_available(self):
         self.assertIn("Root dentro de Proot", self.html)
         self.assertIn("Root Android", self.html)
+        self.assertIn("Grupos efectivos", self.html)
+        self.assertIn("Dispositivo ", self.html)
         self.assertIn("Modo monitor", self.html)
         self.assertIn("Inyección de paquetes", self.html)
         self.assertIn("no demuestra que pueda activarse", self.html)
