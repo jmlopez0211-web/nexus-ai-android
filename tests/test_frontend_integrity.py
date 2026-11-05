@@ -42,8 +42,18 @@ class FrontendIntegrityTests(unittest.TestCase):
         self.assertTrue(manifest.get("start_url"))
         worker = (ROOT / "service-worker.js").read_text(encoding="utf-8")
         self.assertIn('if (url.pathname.startsWith("/api/")) return;', worker)
-        self.assertIn('const CACHE_NAME = "nexus-shell-v2";', worker)
+        self.assertIn('const CACHE_NAME = "nexus-shell-v3";', worker)
+        self.assertIn('"/runtime-center.js"', worker)
 
+    def test_runtime_center_javascript_parses(self):
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node.js no está disponible en este entorno")
+        script = ROOT / "runtime-center.js"
+        result = subprocess.run([node, "--check", str(script)], capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        html = (ROOT / "índice.html").read_text(encoding="utf-8")
+        self.assertIn('<script src="/runtime-center.js" defer></script>', html)
 
 
     def test_baseline_change_tracking_and_professional_report_are_integrated(self):
