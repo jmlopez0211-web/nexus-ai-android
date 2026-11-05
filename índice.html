@@ -213,6 +213,9 @@ footer{color:#62798a;border-color:#d7e4ed}
     <p class="muted">Ejecuta diagnósticos Python independientes desde esta aplicación. Cada módulo comprueba compatibilidad y datos disponibles en modo de solo lectura.</p>
     <div class="notice"><strong>Catálogo de laboratorio autorizado</strong><br>Wacker · hostapd-mana · Wifite2 · EAPHammer. Cada botón inicia un perfil Python de diagnóstico seguro. Los ejecutables de terceros se detectan, pero no se lanzan: quedan deshabilitadas la suplantación de puntos de acceso, captura de credenciales, intentos de contraseña y ataques automáticos.</div>
     <div class="audit-actions"><button id="check-python-engine" type="button">Comprobar motor Python</button><button id="export-python-engine" type="button" disabled>Exportar diagnóstico</button></div>
+    <div class="audit-actions"><button id="check-hardware-capabilities" type="button">Comprobar hardware y permisos</button><button id="export-hardware-capabilities" type="button" disabled>Exportar diagnóstico de capacidades</button></div>
+    <p id="hardware-capability-status" class="muted" role="status" aria-live="polite">Sin diagnóstico de hardware y permisos.</p>
+    <div id="hardware-capability-results" aria-live="polite"></div>
     <p id="python-engine-status" class="muted" role="status" aria-live="polite">Sin comprobación todavía.</p>
     <div id="python-engine-results" aria-live="polite"></div>
   </section>
@@ -716,6 +719,97 @@ async function scanNexusWifi(){
 
 <script>
 let latestPythonEngineReport=null;
+let latestHardwareCapabilityReport=null;
+
+document.getElementById("check-hardware-capabilities").addEventListener("click",checkHardwareCapabilities);
+document.getElementById("export-hardware-capabilities").addEventListener("click",()=>{
+ if(!latestHardwareCapabilityReport)return;
+ const blob=new Blob([JSON.stringify(latestHardwareCapabilityReport,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="nexus-hardware-capabilities.json";a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+function capabilityLine(parent,label,value){
+ const line=document.createElement("p");
+ line.className="muted";
+ line.textContent=label+": "+value;
+ parent.append(line);
+}
+function capabilityValue(value){
+ if(value===true)return "Sí";
+ if(value===false)return "No";
+ if(value===null||value===undefined||value==="")return "Desconocido";
+ return String(value);
+}
+function renderCapabilityEnvironment(root,title,data){
+ const card=document.createElement("article");card.className="finding";
+ const heading=document.createElement("h4");heading.textContent=title+" · "+(data.environment||data.status||"sin datos");
+ card.append(heading);
+ if(data.status&&data.status!=="ok"){
+  capabilityLine(card,"Estado del diagnóstico",data.status);
+  if(data.error)capabilityLine(card,"Detalle",data.error);
+  root.append(card);return;
+ }
+ capabilityLine(card,"Python / arquitectura",(data.python_version||"N/D")+" · "+(data.architecture||"N/D"));
+ capabilityLine(card,"Kernel",data.kernel_release||"N/D");
+ const privileges=data.privileges||{},caps=privileges.capabilities||{};
+ capabilityLine(card,"UID / UID efectivo",String(privileges.uid??"N/D")+" / "+String(privileges.effective_uid??"N/D"));
+ capabilityLine(card,"Root dentro de Proot",capabilityValue(privileges.root_in_proot));
+ capabilityLine(card,"Root Android",capabilityValue(privileges.android_root));
+ capabilityLine(card,"CAP_NET_ADMIN / CAP_NET_RAW",capabilityValue(caps.cap_net_admin)+" / "+capabilityValue(caps.cap_net_raw));
+ capabilityLine(card,"Hardware / Netlink",(data.hardware_access?.status||"unknown")+" / "+(data.hardware_access?.iw_netlink||"unknown"));
+ capabilityLine(card,"Modo monitor",data.monitor_mode?.status||"unknown");
+ capabilityLine(card,"Inyección de paquetes",data.packet_injection?.status||"unknown");
+ if(data.hardware_access?.evidence)capabilityLine(card,"Evidencia de hardware",data.hardware_access.evidence);
+ if(data.monitor_mode?.evidence)capabilityLine(card,"Evidencia de monitor",data.monitor_mode.evidence);
+ if(data.packet_injection?.evidence)capabilityLine(card,"Evidencia de inyección",data.packet_injection.evidence);
+ const details=document.createElement("details");
+ const summary=document.createElement("summary");summary.textContent="Inventario de programas";
+ details.append(summary);
+ (data.tools||[]).forEach(tool=>{
+  capabilityLine(details,tool.name,
+   (tool.installed?"instalado":"no instalado")+" · permiso de ejecución: "+capabilityValue(tool.executable_permission)+
+   " · prueba inocua: "+(tool.execution_probe||"unknown")+
+   (tool.path?" · "+tool.path:""));
+ });
+ const interfaces=(data.wireless_interfaces_sysfs||data.network_interfaces||[]);
+ capabilityLine(details,"Interfaces visibles",interfaces.length?interfaces.join(", "):"Ninguna interfaz inalámbrica confirmada");
+ card.append(details);root.append(card);
+}
+async function checkHardwareCapabilities(){
+ const button=document.getElementById("check-hardware-capabilities");
+ const status=document.getElementById("hardware-capability-status");
+ const root=document.getElementById("hardware-capability-results");
+ button.disabled=true;button.textContent="Comprobando…";
+ status.textContent="Consultando Termux y Ubuntu Proot mediante el puente local…";
+ root.replaceChildren();
+ try{
+  const token=getBridgeToken();
+  if(!token)throw new Error("Introduce el token local y guarda la conexión.");
+  const response=await fetch(getWifiBridgeUrl()+"/api/capabilities",{
+   headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",
+   signal:AbortSignal.timeout(28000)
+  });
+  const data=await response.json();
+  if(response.status===401)throw new Error("Token local incorrecto o ausente.");
+  if(!response.ok||data.ok!==true||!data.environments)throw new Error(data.error||("HTTP "+response.status));
+  latestHardwareCapabilityReport={...data,generated_at:new Date().toISOString()};
+  renderCapabilityEnvironment(root,"Termux / Android",data.environments.termux||{status:"no_data"});
+  const ubuntu=data.environments.ubuntu_proot||{status:"no_data"};
+  renderCapabilityEnvironment(root,"Ubuntu Proot",ubuntu);
+  const note=document.createElement("p");note.className="notice";
+  note.textContent="El modo monitor solo se marca como anunciado cuando el controlador lo declara; eso no demuestra que pueda activarse. La inyección permanece desconocida: esta prueba no transmite tramas ni realiza ataques.";
+  root.append(note);
+  document.getElementById("export-hardware-capabilities").disabled=false;
+  status.textContent="Diagnóstico completado. Revisa por separado instalación, ejecución, permisos y acceso al hardware.";
+ }catch(error){
+  status.textContent="No se pudo completar el diagnóstico: "+error.message;
+ }finally{
+  button.disabled=false;button.textContent="Comprobar hardware y permisos";
+ }
+}
+
 document.getElementById("check-python-engine").addEventListener("click",checkPythonEngine);
 document.getElementById("export-python-engine").addEventListener("click",()=>{
  if(!latestPythonEngineReport)return;
