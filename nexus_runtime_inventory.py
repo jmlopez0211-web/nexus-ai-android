@@ -42,6 +42,9 @@ RUNTIMES = (
     ("perl", "Perl", ("perl",), "Scripts Perl"),
     ("lua", "Lua", ("lua", "lua5.4", "lua5.3"), "Scripts Lua"),
     ("r", "R", ("R",), "Análisis estadístico"),
+    ("go", "Go", ("go",), "Aplicaciones y utilidades Go"),
+    ("rust", "Rust", ("rustc",), "Compilación Rust"),
+    ("c-compiler", "C/C++ compiler", ("clang", "gcc"), "Compilación nativa compatible con ARM64"),
     ("git", "Git", ("git",), "Control de versiones"),
 )
 
@@ -60,7 +63,13 @@ TOOLS = (
     ("openssl", "OpenSSL", ("openssl",), "Diagnóstico TLS"),
     ("sqlite3", "SQLite CLI", ("sqlite3",), "Consultas SQLite"),
     ("psql", "PostgreSQL CLI", ("psql",), "Cliente PostgreSQL"),
+    ("mysql", "MySQL/MariaDB CLI", ("mysql", "mariadb"), "Cliente MySQL/MariaDB"),
     ("duckdb", "DuckDB CLI", ("duckdb",), "Motor analítico DuckDB"),
+    ("gvm-cli", "Greenbone GVM CLI", ("gvm-cli",), "Cliente de gestión Greenbone; detección solamente"),
+    ("gvmd", "Greenbone Manager", ("gvmd",), "Gestor Greenbone; detección solamente"),
+    ("gsad", "Greenbone Web Assistant", ("gsad",), "Interfaz Greenbone; detección solamente"),
+    ("ospd-openvas", "OpenVAS Scanner", ("ospd-openvas",), "Escáner Greenbone; detección solamente"),
+    ("wapiti", "Wapiti", ("wapiti",), "Auditoría web; detección solamente"),
     ("termux-api", "Termux:API Wi-Fi", ("termux-wifi-scaninfo",), "Lectura de resultados Wi-Fi Android"),
     ("git", "Git", ("git",), "Control de versiones"),
 )
@@ -85,6 +94,7 @@ SQL_ENGINES = (
     ("sqlite", "SQLite", "sqlite3", "built-in", "Base de datos local integrada en Python"),
     ("duckdb", "DuckDB", "duckdb", "optional", "Analítica local; requiere paquete duckdb"),
     ("postgresql", "PostgreSQL", "psycopg", "optional", "Servidor externo; requiere cliente o driver"),
+    ("mysql", "MySQL / MariaDB", "pymysql", "optional", "Servidor externo; requiere cliente o driver"),
 )
 
 def _which(names):
