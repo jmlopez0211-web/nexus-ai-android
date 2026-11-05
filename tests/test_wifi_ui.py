@@ -50,6 +50,14 @@ class WifiUiFeatureTests(unittest.TestCase):
         self.assertNotIn('mode:"live",count:nexusWifiInventory.length', self.html)
 
 
+    def test_empty_wifi_result_shows_actionable_android_permission_guidance(self):
+        self.assertIn("Pasos para recuperar las redes Wi-Fi", self.html)
+        self.assertIn("Termux:API > Permisos", self.html)
+        self.assertIn("Búsqueda de redes Wi-Fi", self.html)
+        self.assertIn("termux-wifi-scaninfo", self.html)
+        self.assertIn("no fuerza por sí sola un escaneo de radio", self.html)
+
+
 
 if __name__ == "__main__":
     unittest.main()

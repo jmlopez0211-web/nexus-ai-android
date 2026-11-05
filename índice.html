@@ -128,7 +128,7 @@ button:hover{background:#d8efea;border-color:#087f73} button:disabled{opacity:.5
 .wifi-network,.metric{background:#f7fbfe;border-color:#d4e3ed}
 .finding{background:#f8fbfe;border-color:#d7e4ed}.finding p,.muted{color:#526779}.wifi-meta{color:#526779}
 .wifi-tools a,.wifi-tools button{background:#f4f9fc;color:#21465d;border-color:#d2e1eb}
-#nexus-wifi-status,#local-scan-status,#wireless-audit-status{padding:10px 12px;border-radius:10px;background:#f0f6fa;border:1px solid #dbe7ef}
+#nexus-wifi-status,#local-scan-status,#wireless-audit-status{padding:10px 12px;border-radius:10px;background:#f0f6fa;border:1px solid #dbe7ef}\n.wifi-help{margin-top:12px;padding:12px 14px;border:1px solid #c9dce7;border-radius:12px;background:#f7fbfe;color:#244b5b}.wifi-help summary{cursor:pointer;font-weight:700}.wifi-help ol{padding-left:22px}.wifi-help li{margin:9px 0;line-height:1.5}
 .rowline{flex-wrap:wrap}.rowline button{flex:1 1 150px}.audit-actions button{flex:1 1 150px}
 footer{color:#62798a;border-color:#d7e4ed}
 @media(max-width:560px){main{padding:10px 10px 32px}header{min-height:140px;padding:16px;border-radius:16px}header .hero-art{opacity:.22;width:48%}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.tile{min-height:100px;padding:10px;font-size:14px}.panel{padding:14px}.rowline{display:grid;grid-template-columns:1fr}.rowline button{width:100%}.audit-actions{display:grid;grid-template-columns:1fr}.audit-actions button{width:100%}.wifi-tools{grid-template-columns:1fr}}
@@ -663,8 +663,19 @@ async function scanNexusWifi(){
     }else if(count){
       status.textContent="Termux:API respondió con "+count+" redes. Antigüedad indicada por Android: "+scanAgeLabel+". Esta consulta lee los resultados disponibles; no fuerza por sí sola un escaneo físico.";
     }else{
-      status.textContent="Termux:API respondió correctamente, pero Android no entregó redes. Comprueba que la ubicación esté habilitada y vuelve a intentarlo más tarde.";
-      list.textContent="No hay resultados Wi-Fi disponibles en esta respuesta. El inventario previo se conserva en la caché local del puente cuando sigue vigente.";
+      status.textContent="Termux:API respondió correctamente, pero Android no entregó redes en esta consulta. No es un fallo del motor Python: Android puede limitar o retrasar los resultados Wi-Fi.";
+      const help=document.createElement("details");help.className="wifi-help";
+      const heading=document.createElement("summary");heading.textContent="Pasos para recuperar las redes Wi-Fi";
+      const steps=document.createElement("ol");
+      [
+        "En Ajustes > Aplicaciones > Termux:API > Permisos, permite Ubicación mientras se usa la aplicación. Comprueba también los permisos de Termux si Android los solicita.",
+        "Activa la Ubicación del teléfono.",
+        "En Ajustes > Ubicación > Servicios de ubicación, activa Búsqueda de redes Wi-Fi si aparece en tu versión de Android.",
+        "Vuelve a Termux y ejecuta termux-wifi-scaninfo. Si devuelve [], Android todavía no entrega resultados recientes; espera un poco y vuelve a consultar."
+      ].forEach(message=>{const item=document.createElement("li");item.textContent=message;steps.append(item);});
+      help.append(heading,steps);list.append(help);
+      const note=document.createElement("p");note.className="muted";note.textContent="Esta consulta lee los últimos resultados disponibles de Android; no fuerza por sí sola un escaneo de radio. La caché del puente se conserva cuando existe un inventario válido reciente.";
+      list.append(note);
       return;
     }
     const orderedNetworks=[...networks].sort((a,b)=>(Number(b.rssi)||-120)-(Number(a.rssi)||-120));
