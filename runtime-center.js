@@ -57,7 +57,10 @@
   });
   (data.internal_modules||[]).forEach(item=>line(internalRoot,item.name+" · "+item.status,item.path));
   (data.tools||[]).forEach(item=>line(toolsRoot,item.name+" · "+(item.installed?"Instalada":"No detectada"),(item.version||"Versión no disponible")+" · "+item.purpose));
-  (data.python_packages||[]).forEach(item=>line(packageRoot,item.name+" · "+item.version,"Distribución instalada en el intérprete que ejecuta el puente"));
+  const packages=data.python_packages||[];
+  const packageReport=document.createElement("pre");packageReport.className="finding";
+  packageReport.style.whiteSpace="pre-wrap";packageReport.textContent=packages.length+" distribuciones Python instaladas\\n"+packages.map(item=>item.name+" "+item.version).join("\\n");
+  packageRoot.append(packageReport);
   Object.entries(data.python_modules||{}).forEach(([name,installed])=>line(packageRoot,name,installed?"Módulo importable":"No detectado"));
   (data.proot_environments||[]).forEach(item=>line(prootRoot,item.name+" · "+(item.installed?"instalado":"no disponible"),item.python_found?"Python encontrado: "+item.python_path_in_rootfs+" · ejecución todavía no verificada": "No se encontró Python en las rutas habituales"));
   if(!(data.proot_environments||[]).length)line(prootRoot,"No se detectaron distros Proot instaladas","Se ha consultado el directorio de instalación habitual de proot-distro.");
