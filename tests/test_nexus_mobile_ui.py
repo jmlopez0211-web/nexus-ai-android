@@ -46,7 +46,9 @@ class NexusMobileUiTests(unittest.TestCase):
         self.assertNotIn(r'if(!/^https?:\\/\\//i.test(value))', self.html)
 
     def test_wifi_scan_distinguishes_cached_and_empty_results(self):
-        self.assertIn("Inventario local recuperado de caché", self.html)
+        self.assertIn("Inventario local de respaldo", self.html)
+        self.assertIn("last_nonempty_api_response_at", self.html)
+        self.assertIn("scan_age_seconds", self.html)
         self.assertIn("última lectura válida de esta sesión", self.html)
         self.assertIn("termux-wifi-scaninfo", self.html)
 
