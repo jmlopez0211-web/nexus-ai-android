@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 VERSION = "1.0.0"
+PROJECT_ROOT = Path(__file__).resolve().parent
 HOME = Path.home()
 APP_DIR = HOME / ".cache" / "nexus-ai"
 OWNED_DIRS = (
@@ -159,13 +160,13 @@ def inventory():
     known_paths = set()
     for module_id, name, path in INTERNAL_MODULES:
         known_paths.add(path)
-        present = Path(path).is_file()
+        present = (PROJECT_ROOT / path).is_file()
         modules.append({
             "id": module_id, "name": name, "path": path,
             "present": present, "status": "disponible" if present else "no encontrado",
         })
 
-    for source in sorted(Path.cwd().glob("*.py")):
+    for source in sorted(PROJECT_ROOT.glob("*.py")):
         if source.name not in known_paths:
             modules.append({"id": "project:" + source.stem, "name": source.name,
                             "path": source.name, "present": True,
