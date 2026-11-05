@@ -1054,7 +1054,7 @@ async function compareLocalAuditBaseline(){
  }catch(error){status.textContent="Error en comparación: "+error.message;}finally{button.disabled=false;}
 }
 document.getElementById("compare-local-audit").addEventListener("click",compareLocalAuditBaseline);
-function runNexusSecurityAudit() {
+async function runNexusSecurityAudit() {
   const status = document.getElementById("local-audit-status");
   const target = document.getElementById("nexus-scan-target").value.trim();
   const token = getBridgeToken();
