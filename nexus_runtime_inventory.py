@@ -239,3 +239,57 @@ def repair_owned_storage(confirmed=False):
         "note": "Solo se han preparado carpetas de datos de NEXUS. No se han instalado paquetes, modificado scripts ni cambiado ajustes de Android.",
         "diagnostics_after": diagnostics(),
     }
+
+
+def run_runtime_check(runtime_id, confirmed=False):
+    """Run only fixed, harmless runtime smoke tests; never accept user-supplied commands."""
+    if confirmed is not True:
+        raise PermissionError("La prueba requiere confirmación explícita.")
+    checks = {
+        "python": (sys.executable, ["-c", "import json,sqlite3; print('PYTHON_OK', json.dumps({'sqlite': sqlite3.sqlite_version}))"]),
+        "node": ("node", ["-e", "console.log('NODE_OK')"]),
+        "bash": ("bash", ["-c", "printf 'BASH_OK\\n'"]),
+        "php": ("php", ["-r", "echo \"PHP_OK\\n\";"]),
+        "ruby": ("ruby", ["-e", "puts 'RUBY_OK'"]),
+        "perl": ("perl", ["-e", "print \"PERL_OK\\n\";"]),
+        "lua": ("lua", ["-e", "print('LUA_OK')"]),
+        "java": ("java", ["-version"]),
+    }
+    if runtime_id == "sqlite":
+        try:
+            with sqlite3.connect(":memory:") as connection:
+                value = connection.execute("SELECT 1").fetchone()[0]
+            return {"ok": value == 1, "id": "sqlite", "mode": "in_memory_read_only_smoke_test",
+                    "result": "SQLITE_OK" if value == 1 else "unexpected result"}
+        except sqlite3.Error as exc:
+            return {"ok": False, "id": "sqlite", "error": type(exc).__name__}
+    if runtime_id == "duckdb":
+        try:
+            import duckdb
+            value = duckdb.connect(":memory:", read_only=False).execute("SELECT 1").fetchone()[0]
+            return {"ok": value == 1, "id": "duckdb", "mode": "in_memory_smoke_test", "result": "DUCKDB_OK"}
+        except ImportError:
+            return {"ok": False, "id": "duckdb", "error": "DuckDB no está instalado"}
+        except Exception as exc:
+            return {"ok": False, "id": "duckdb", "error": type(exc).__name__}
+    if runtime_id == "postgresql":
+        return {"ok": False, "id": "postgresql", "status": "not_configured",
+                "note": "No se ha configurado una conexión PostgreSQL. No se intenta conectar ni modificar bases de datos."}
+    if runtime_id not in checks:
+        raise ValueError("Motor no autorizado para prueba.")
+    executable, args = checks[runtime_id]
+    path = shutil.which(executable) if executable != sys.executable else executable
+    if not path:
+        return {"ok": False, "id": runtime_id, "status": "not_installed"}
+    try:
+        result = subprocess.run([path, *args], capture_output=True, text=True,
+                                timeout=8, check=False, shell=False,
+                                env={"PATH": os.environ.get("PATH", ""), "HOME": str(HOME)})
+        output = ((result.stdout or "") + (result.stderr or "")).strip()[-1000:]
+        return {"ok": result.returncode == 0, "id": runtime_id,
+                "returncode": result.returncode, "output": output,
+                "mode": "fixed_safe_smoke_test"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "id": runtime_id, "error": "timeout"}
+    except OSError as exc:
+        return {"ok": False, "id": runtime_id, "error": type(exc).__name__}
