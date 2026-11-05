@@ -140,6 +140,7 @@
  $("nexus-bridge-restart").addEventListener("click",restartBridge);
  checkBridgeStatus();
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkBridgeStatus();});
+ window.setInterval(()=>{if(!document.hidden)checkBridgeStatus();},30000);
  $("nexus-runtime-diagnostics").addEventListener("click",diagnostics);
  $("nexus-runtime-repair").addEventListener("click",repair);
  $("nexus-dependency-repair").addEventListener("click",repairDependencies);
