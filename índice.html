@@ -758,6 +758,9 @@ function renderCapabilityEnvironment(root,title,data){
  capabilityLine(card,"Root dentro de Proot",capabilityValue(privileges.root_in_proot));
  capabilityLine(card,"Root Android",capabilityValue(privileges.android_root));
  capabilityLine(card,"CAP_NET_ADMIN / CAP_NET_RAW",capabilityValue(caps.cap_net_admin)+" / "+capabilityValue(caps.cap_net_raw));
+ const groups=(privileges.groups||[]).map(group=>group.name||("GID "+group.gid));
+ capabilityLine(card,"Grupos efectivos",groups.length?groups.join(", "):"No disponibles");
+ if(privileges.permission_note)capabilityLine(card,"Nota de privilegios",privileges.permission_note);
  capabilityLine(card,"Hardware / Netlink",(data.hardware_access?.status||"unknown")+" / "+(data.hardware_access?.iw_netlink||"unknown"));
  capabilityLine(card,"Modo monitor",data.monitor_mode?.status||"unknown");
  capabilityLine(card,"Inyección de paquetes",data.packet_injection?.status||"unknown");
@@ -773,6 +776,11 @@ function renderCapabilityEnvironment(root,title,data){
    " · prueba inocua: "+(tool.execution_probe||"unknown")+
    (tool.path?" · "+tool.path:""));
  });
+ (data.device_permissions||[]).forEach(device=>{
+  const access="lectura "+capabilityValue(device.readable)+" · escritura "+capabilityValue(device.writable);
+  capabilityLine(details,"Dispositivo "+device.path,device.status+" · "+access+" · modo "+(device.mode||"N/D"));
+ });
+ if(data.device_permission_note)capabilityLine(details,"Límite de permisos",data.device_permission_note);
  const interfaces=[...new Set([...(data.wireless_interfaces_sysfs||[]),...(data.wireless_interfaces_iw||[])])];
  const allInterfaces=data.network_interfaces||[];
  capabilityLine(details,"Interfaces de red visibles",allInterfaces.length?allInterfaces.join(", "):"Ninguna visible");
