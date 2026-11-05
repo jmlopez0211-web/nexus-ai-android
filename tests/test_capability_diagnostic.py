@@ -134,6 +134,8 @@ class WirelessCapabilityTests(unittest.TestCase):
             result = diag.inspect_runtime()
         self.assertEqual(result["packet_injection"]["status"], "unknown")
         self.assertFalse(result["packet_injection"]["verified"])
+        self.assertEqual(result["android_permissions"]["location_permission"], "not_directly_inspectable")
+        self.assertEqual(result["android_permissions"]["other_android_permissions"], "not_enumerated")
 
 
 class UbuntuProotTests(unittest.TestCase):
