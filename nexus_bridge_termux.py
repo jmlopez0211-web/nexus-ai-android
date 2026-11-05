@@ -326,6 +326,8 @@ class Handler(BaseHTTPRequestHandler):
             }, origin)
         except subprocess.TimeoutExpired:
             return self._reply(504, {"ok": False, "error": "Termux:API superó 25 segundos"}, origin)
+        except ValueError as exc:
+            return self._reply(502, {"ok": False, "error": "Respuesta de Termux:API no válida: " + str(exc)[:400]}, origin)
         except Exception as exc:
             return self._reply(500, {"ok": False, "error": type(exc).__name__ + ": " + str(exc)}, origin)
 
