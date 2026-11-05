@@ -16,7 +16,7 @@ class FrontendIntegrityTests(unittest.TestCase):
         if not node:
             self.skipTest("Node.js no está disponible en este entorno")
         html = (ROOT / "índice.html").read_text(encoding="utf-8")
-        blocks = re.findall(r"<script\\b[^>]*>(.*?)</script>", html, flags=re.IGNORECASE | re.DOTALL)
+        blocks = re.findall(r"<script\b[^>]*>(.*?)</script>", html, flags=re.IGNORECASE | re.DOTALL)
         self.assertTrue(blocks, "No se encontraron bloques JavaScript")
         for index, source in enumerate(blocks, start=1):
             if not source.strip():
@@ -33,7 +33,7 @@ class FrontendIntegrityTests(unittest.TestCase):
             self.assertEqual(
                 result.returncode,
                 0,
-                f"Bloque JavaScript {index} inválido:\\n{result.stderr}",
+                f"Bloque JavaScript {index} inválido:\n{result.stderr}",
             )
 
     def test_manifest_is_valid_and_service_worker_does_not_cache_api(self):
