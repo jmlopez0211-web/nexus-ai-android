@@ -7,6 +7,7 @@ import os
 import secrets
 import shutil
 import socket
+import threading
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -57,6 +58,8 @@ PORTS = {
 CONNECT_TIMEOUT = 0.45
 WIFI_CACHE_FILE = os.path.join(os.path.expanduser("~"), ".cache", "nexus-ai", "wifi-inventory.json")
 WIFI_CACHE_TTL_SECONDS = 900
+WIFI_CACHE_LOCK = threading.RLock()
+WIFI_SCAN_LOCK = threading.Lock()
 
 
 def load_wifi_cache():
@@ -89,6 +92,75 @@ def save_wifi_cache(networks):
 
 
 WIFI_CACHE, WIFI_CACHE_SAVED_AT = load_wifi_cache()
+
+
+def normalize_wifi_networks(raw):
+    """Normalize Termux:API results while preserving Android scan metadata."""
+    if not isinstance(raw, list):
+        raise ValueError("Respuesta JSON inesperada: se esperaba una lista.")
+    networks = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        network = {
+            "ssid": item.get("ssid", ""),
+            "bssid": item.get("bssid", ""),
+            "rssi": item.get("rssi", item.get("level")),
+            "frequency_mhz": item.get("frequency_mhz", item.get("frequency")),
+            "channel_bandwidth_mhz": item.get("channel_bandwidth_mhz"),
+            "capabilities": item.get("capabilities", ""),
+        }
+        for key in ("timestamp", "center_frequency_mhz", "operator_name", "venue_name"):
+            if key in item:
+                network[key] = item[key]
+        networks.append(network)
+    return networks
+
+
+def latest_wifi_scan_age_seconds(networks):
+    """Return age from Android ScanResult.timestamp (microseconds since boot)."""
+    timestamps = []
+    for network in networks:
+        try:
+            value = int(network.get("timestamp", 0))
+            if value > 0:
+                timestamps.append(value)
+        except (AttributeError, TypeError, ValueError):
+            continue
+    if not timestamps:
+        return None
+    try:
+        clock_id = getattr(time, "CLOCK_BOOTTIME", None)
+        elapsed = time.clock_gettime(clock_id) if clock_id is not None else time.monotonic()
+        age = int(max(0, elapsed - (max(timestamps) / 1_000_000)))
+        return age if age <= 7 * 24 * 60 * 60 else None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def resolve_wifi_inventory(networks, now=None):
+    """Update or recover the protected cache and return truthful source metadata."""
+    global WIFI_CACHE, WIFI_CACHE_SAVED_AT
+    current = time.time() if now is None else float(now)
+    with WIFI_CACHE_LOCK:
+        if networks:
+            WIFI_CACHE = list(networks)
+            try:
+                WIFI_CACHE_SAVED_AT = save_wifi_cache(WIFI_CACHE)
+            except OSError:
+                WIFI_CACHE_SAVED_AT = current
+            cached = False
+        elif WIFI_CACHE and 0 <= current - WIFI_CACHE_SAVED_AT <= WIFI_CACHE_TTL_SECONDS:
+            networks = list(WIFI_CACHE)
+            cached = True
+        else:
+            WIFI_CACHE = []
+            WIFI_CACHE_SAVED_AT = 0.0
+            networks = []
+            cached = False
+        saved_at = WIFI_CACHE_SAVED_AT or None
+        cache_age = max(0, int(current - WIFI_CACHE_SAVED_AT)) if WIFI_CACHE_SAVED_AT else None
+        return list(networks), cached, saved_at, cache_age
 
 
 def validate_lan_target(value):
@@ -190,7 +262,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = urlparse(self.path).path
         if path == "/api/status":
-            return self._reply(200, {"ok": True, "service": "NEXUS IA local bridge", "host": HOST, "port": PORT, "wifi_api": bool(shutil.which("termux-wifi-scaninfo")), "cached_networks": len(WIFI_CACHE), "cache_age_seconds": max(0, int(time.time() - WIFI_CACHE_SAVED_AT)) if WIFI_CACHE_SAVED_AT else None}, origin)
+            with WIFI_CACHE_LOCK:
+                cached_count = len(WIFI_CACHE)
+                cache_age = max(0, int(time.time() - WIFI_CACHE_SAVED_AT)) if WIFI_CACHE_SAVED_AT else None
+            return self._reply(200, {
+                "ok": True, "service": "NEXUS IA local bridge", "host": HOST, "port": PORT,
+                "wifi_api": bool(shutil.which("termux-wifi-scaninfo")),
+                "cached_networks": cached_count, "cache_age_seconds": cache_age,
+                "wifi_data_mode": "latest_android_scan_results",
+            }, origin)
         if path == "/api/tooling":
             return self._reply(200, inventory_tools(), origin)
         if path == "/api/plugins":
@@ -205,44 +285,40 @@ class Handler(BaseHTTPRequestHandler):
             return self._reply(503, {"ok": False, "error": "No se encuentra termux-wifi-scaninfo. Instala Termux:API y concede permisos."}, origin)
         import subprocess
         try:
-            result = subprocess.run([command], capture_output=True, text=True, timeout=25)
+            # Serialize calls: simultaneous page actions must not race the cache or
+            # hammer Termux:API when Android is already throttling Wi-Fi updates.
+            with WIFI_SCAN_LOCK:
+                result = subprocess.run([command], capture_output=True, text=True, timeout=25)
             if result.returncode:
                 return self._reply(502, {"ok": False, "error": (result.stderr or result.stdout or "Error Termux:API")[:800]}, origin)
             raw = json.loads(result.stdout or "[]")
-            if not isinstance(raw, list):
-                raise ValueError("Respuesta JSON inesperada")
-            networks = [{
-                "ssid": item.get("ssid", ""), "bssid": item.get("bssid", ""),
-                "rssi": item.get("rssi", item.get("level")),
-                "frequency_mhz": item.get("frequency_mhz", item.get("frequency")),
-                "channel_bandwidth_mhz": item.get("channel_bandwidth_mhz"),
-                "capabilities": item.get("capabilities", "")
-            } for item in raw if isinstance(item, dict)]
+            networks = normalize_wifi_networks(raw)
 
-            # Android may temporarily return an empty/partial scan because of
-            # Wi-Fi scan throttling. Preserve the last non-empty inventory.
+            # termux-wifi-scaninfo reads Android's latest ScanResult list; it does
+            # not itself guarantee that a new radio scan was initiated.
             now = time.time()
-            if networks:
-                WIFI_CACHE = networks
-                try:
-                    WIFI_CACHE_SAVED_AT = save_wifi_cache(networks)
-                except OSError:
-                    WIFI_CACHE_SAVED_AT = now
-                cached = False
-            elif WIFI_CACHE and 0 <= now - WIFI_CACHE_SAVED_AT <= WIFI_CACHE_TTL_SECONDS:
-                networks = list(WIFI_CACHE)
-                cached = True
-            else:
-                WIFI_CACHE = []
-                WIFI_CACHE_SAVED_AT = 0.0
-                cached = False
+            networks, cached, saved_at, cache_age = resolve_wifi_inventory(networks, now)
+            scan_age = latest_wifi_scan_age_seconds(networks)
+            saved_iso = datetime.fromtimestamp(saved_at, timezone.utc).isoformat() if saved_at else None
             return self._reply(200, {
                 "ok": True,
                 "mode": "cached" if cached else "live",
                 "cached": cached,
+                "fresh": bool(networks) and not cached,
+                "source": "local_cache" if cached else "termux_api",
                 "count": len(networks),
                 "networks": networks,
-                "note": "Se muestra el último inventario válido porque Android no devolvió resultados nuevos." if cached else ""
+                "requested_at": datetime.fromtimestamp(now, timezone.utc).isoformat(),
+                "last_nonempty_api_response_at": saved_iso,
+                "cache_age_seconds": cache_age,
+                "scan_age_seconds": scan_age,
+                "scan_timestamp_source": "android_scan_result_timestamp" if scan_age is not None else None,
+                "scan_api_behavior": "latest_results_only",
+                "note": (
+                    "Android no entregó resultados nuevos en esta consulta; se conserva el último inventario válido."
+                    if cached else
+                    "Termux:API devolvió la lista disponible en Android. Esta consulta no fuerza por sí sola un nuevo escaneo de radio."
+                ),
             }, origin)
         except subprocess.TimeoutExpired:
             return self._reply(504, {"ok": False, "error": "Termux:API superó 25 segundos"}, origin)
