@@ -101,7 +101,7 @@
  }
 
  async function repairDependencies(){
-  if(!window.confirm("NEXUS comprobará sus dependencias principales e instalará únicamente las que falten en el Python del puente local. No actualizará deliberadamente paquetes ya presentes. ¿Continuar?"))return;
+  if(!window.confirm("NEXUS comprobará sus dependencias principales e instalará únicamente las que falten en el Python del puente local. No solicitará actualizar paquetes principales ya presentes; pip podría ajustar dependencias transitivas si fuera necesario. ¿Continuar?"))return;
   status.textContent="Comprobando e instalando, si hace falta, las dependencias ausentes…";
   try{
    const data=await request("/api/maintenance/repair-dependencies",{confirmed:true},200000);
