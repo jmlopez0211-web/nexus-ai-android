@@ -41,7 +41,7 @@ def _read_text(path: str, limit: int = 12000) -> str:
 
 
 def _capability_bits(status_text: str) -> dict:
-    match = re.search(r"^CapEff:\\s*([0-9a-fA-F]+)", status_text, re.MULTILINE)
+    match = re.search(r"^CapEff:\s*([0-9a-fA-F]+)", status_text, re.MULTILINE)
     if not match:
         return {"effective_hex": None, "cap_net_admin": None, "cap_net_raw": None,
                 "note": "El kernel no expuso CapEff en /proc/self/status."}
@@ -138,7 +138,7 @@ def _probe_executable(definition: dict) -> dict:
                     "path": path, "exit_code": completed.returncode,
                     "version_or_help": None, "network_count": count,
                     "network_identifiers_included": False}
-        output = ((completed.stdout or "") + "\\n" + (completed.stderr or "")).strip()
+        output = ((completed.stdout or "") + "\n" + (completed.stderr or "")).strip()
         responded = completed.returncode == 0 or bool(output)
         return {"installed": True, "executable_permission": True,
                 "execution_probe": "responded" if responded else "no_response",
@@ -189,10 +189,10 @@ def _iw_probe(iw_path: str | None) -> dict:
         netlink = "blocked_or_unavailable"
     else:
         netlink = "unavailable_or_error"
-    interface_names = re.findall(r"^\\s*Interface\\s+(\\S+)", dev.stdout or "", re.MULTILINE)
-    phy_names = re.findall(r"^Wiphy\\s+(\\S+)", phy.stdout or "", re.MULTILINE)
-    section = re.search(r"Supported interface modes\\s*:\\s*(.*?)(?:\\n\\S|\\Z)", phy.stdout or "", re.DOTALL)
-    monitor_advertised = bool(section and re.search(r"\\*\\s*monitor\\b", section.group(1)))
+    interface_names = re.findall(r"^\s*Interface\s+(\S+)", dev.stdout or "", re.MULTILINE)
+    phy_names = re.findall(r"^Wiphy\s+(\S+)", phy.stdout or "", re.MULTILINE)
+    section = re.search(r"Supported interface modes\s*:\s*(.*?)(?:\n\S|\Z)", phy.stdout or "", re.DOTALL)
+    monitor_advertised = bool(section and re.search(r"\*\s*monitor\b", section.group(1)))
     if netlink != "accessible":
         monitor = {"status": "blocked_or_unknown", "driver_advertises": None,
                    "evidence": (dev.stderr or phy.stderr or "Netlink/iw no accesible.").strip()[:240]}
@@ -266,7 +266,7 @@ try:
     status = open("/proc/self/status", encoding="utf-8").read()
 except OSError:
     pass
-m = re.search(r"^CapEff:\\s*([0-9a-fA-F]+)", status, re.M)
+m = re.search(r"^CapEff:\s*([0-9a-fA-F]+)", status, re.M)
 cap = int(m.group(1), 16) if m else None
 try:
     uid, euid = os.getuid(), os.geteuid()
@@ -291,8 +291,8 @@ if iw:
         if d.returncode == 0 and l.returncode == 0: netlink="accessible"
         elif "generic netlink" in combined.lower() or "operation not permitted" in combined.lower(): netlink="blocked_or_unavailable"
         else: netlink="unavailable_or_error"
-        section=re.search(r"Supported interface modes\\s*:\\s*(.*?)(?:\\n\\S|\\Z)",l.stdout or "",re.S)
-        advertised=bool(section and re.search(r"\\*\\s*monitor\\b",section.group(1)))
+        section=re.search(r"Supported interface modes\s*:\s*(.*?)(?:\n\S|\Z)",l.stdout or "",re.S)
+        advertised=bool(section and re.search(r"\*\s*monitor\b",section.group(1)))
         monitor={"status":"advertised_not_functionally_verified" if netlink=="accessible" and advertised else ("not_advertised_or_unknown" if netlink=="accessible" else "blocked_or_unknown"),"driver_advertises":advertised if netlink=="accessible" else None,"evidence":"Controlador anuncia monitor; no activado" if advertised else (l.stderr or d.stderr or "No se ha podido demostrar el modo monitor")[:240]}
         iw_error=(d.stderr or l.stderr or "")[:240] or None
     except Exception as e:
