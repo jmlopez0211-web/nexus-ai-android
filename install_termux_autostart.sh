@@ -22,6 +22,18 @@ chmod 700 "$HOME/.termux" "$BOOT_DIR" "$CONFIG_DIR" "$DATA_DIR"
 chmod 700 "$APP_DIR/nexus_bridge_supervisor.sh"
 cp "$APP_DIR/termux-boot/00-nexus-bridge" "$BOOT_DIR/00-nexus-bridge"
 chmod 700 "$BOOT_DIR/00-nexus-bridge"
+if [ -s "$DATA_DIR/bridge-supervisor.pid" ]; then
+  EXISTING_PID="$(cat "$DATA_DIR/bridge-supervisor.pid" 2>/dev/null || true)"
+  case "$EXISTING_PID" in
+    ''|*[!0-9]*) ;;
+    *)
+      if kill -0 "$EXISTING_PID" 2>/dev/null; then
+        echo "NEXUS: el supervisor ya está activo (PID $EXISTING_PID). No se inicia una segunda instancia."
+        exit 0
+      fi
+      ;;
+  esac
+fi
 if [ ! -f "$CONFIG_DIR/bridge.conf" ]; then
   printf 'KEEP_CPU_AWAKE=0\n' > "$CONFIG_DIR/bridge.conf"
   chmod 600 "$CONFIG_DIR/bridge.conf"
