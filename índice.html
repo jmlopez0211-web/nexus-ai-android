@@ -764,7 +764,13 @@ function capabilityState(value){
   invalid_response:"RESPUESTA NO VÁLIDA",
   execution_error:"ERROR DE EJECUCIÓN",
   not_present:"NO PRESENTE",
-  restricted:"RESTRINGIDO"
+  restricted:"RESTRINGIDO",
+  not_directly_inspectable:"NO INSPECCIONABLE DESDE ESTE PROCESO",
+  not_enumerated:"NO ENUMERADOS",
+  returned_results:"CONSULTA DEVOLVIÓ REDES",
+  valid_empty_response:"RESPUESTA VÁLIDA SIN REDES",
+  not_verified:"NO VERIFICADO",
+  not_available:"NO DISPONIBLE"
  };
  if(value===null||value===undefined||value==="")return "DESCONOCIDO";
  return labels[value]||String(value);
@@ -797,6 +803,14 @@ function renderCapabilityEnvironment(root,title,data){
  const groups=(privileges.groups||[]).map(group=>group.name||("GID "+group.gid));
  capabilityLine(card,"Grupos efectivos",groups.length?groups.join(", "):"No disponibles");
  if(privileges.permission_note)capabilityLine(card,"Nota de privilegios",privileges.permission_note);
+ const androidPermissions=data.android_permissions||{};
+ if(androidPermissions.status!=="not_applicable_to_ubuntu_proot"){
+  capabilityLine(card,"Consulta Wi-Fi Termux:API",capabilityState(androidPermissions.current_wifi_query));
+  capabilityLine(card,"Permiso Android de ubicación",capabilityState(androidPermissions.location_permission));
+  capabilityLine(card,"Permiso Android de Wi-Fi cercano",capabilityState(androidPermissions.nearby_wifi_permission));
+  capabilityLine(card,"Otros permisos Android",capabilityState(androidPermissions.other_android_permissions));
+  if(androidPermissions.note)capabilityLine(card,"Límite de permisos Android",androidPermissions.note);
+ }
  capabilityLine(card,"Hardware / Netlink",capabilityState(data.hardware_access?.status)+" / "+capabilityState(data.hardware_access?.iw_netlink));
  capabilityLine(card,"Modo monitor",capabilityState(data.monitor_mode?.status));
  capabilityLine(card,"Inyección de paquetes",capabilityState(data.packet_injection?.status));
