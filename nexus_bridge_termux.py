@@ -17,6 +17,7 @@ from nexus_wireless_engine import inventory_tools, run_tool_module, _termux_wifi
 from nexus_plugin_manager import list_plugins, launch_plugin
 from nexus_security_audit import build_security_report
 from nexus_audit_baseline import compare_and_store_baseline
+from nexus_capability_diagnostic import build_capability_report
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
@@ -279,6 +280,11 @@ class Handler(BaseHTTPRequestHandler):
             }, origin)
         if path == "/api/tooling":
             return self._reply(200, inventory_tools(), origin)
+        if path == "/api/capabilities":
+            try:
+                return self._reply(200, build_capability_report(), origin)
+            except Exception as exc:
+                return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
         if path == "/api/plugins":
             try:
                 return self._reply(200, {"ok": True, "plugins": list_plugins()}, origin)
