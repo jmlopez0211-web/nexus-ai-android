@@ -2,7 +2,7 @@
 (()=>{
  "use strict";
  const $=id=>document.getElementById(id);
- const status=$("nexus-runtime-status"),summary=$("nexus-runtime-summary");
+ const status=$("nexus-runtime-status"),summary=$("nexus-runtime-summary"),supervisorStatus=$("nexus-bridge-supervisor-status");
  const runtimeRoot=$("nexus-runtime-list"),sqlRoot=$("nexus-sql-list");
  const internalRoot=$("nexus-internal-list"),toolsRoot=$("nexus-tools-list");
  const packageRoot=$("nexus-python-packages"),pluginRoot=$("nexus-runtime-plugins"),prootRoot=$("nexus-proot-list"),results=$("nexus-runtime-results");
@@ -74,6 +74,25 @@
   $("nexus-runtime-export").disabled=false;
   status.textContent="Inventario completado. Se muestran únicamente componentes detectados en el entorno del puente local.";
  }
+ async function checkBridgeStatus(){
+  try{
+   const data=await request("/api/status");
+   const active=data.automatic_restart===true;
+   supervisorStatus.textContent=active?"Puente activo · supervisor automático habilitado · recuperación por caída y comprobación de salud cada 25 segundos.":"Puente activo, pero sin supervisor automático. Instala Termux:Boot y ejecuta la instalación inicial para habilitar el arranque y la recuperación automática.";
+   $("nexus-bridge-restart").disabled=!active;
+   return data;
+  }catch(e){supervisorStatus.textContent="Puente local no disponible: "+e.message;$("nexus-bridge-restart").disabled=true;return null;}
+ }
+ async function restartBridge(){
+  if(!window.confirm("NEXUS reiniciará el puente local. Si el supervisor está activo, lo volverá a iniciar automáticamente en unos segundos. ¿Continuar?"))return;
+  $("nexus-bridge-restart").disabled=true;
+  supervisorStatus.textContent="Solicitando reinicio seguro del puente…";
+  try{
+   const data=await request("/api/bridge/control",{action:"restart"});
+   supervisorStatus.textContent=data.message||"Reinicio solicitado. Esperando recuperación…";
+   window.setTimeout(()=>{checkBridgeStatus();},5000);
+  }catch(e){supervisorStatus.textContent="No se pudo reiniciar el puente: "+e.message;await checkBridgeStatus();}
+ }
  async function inventory(){
   status.textContent="Consultando motores, módulos, herramientas y SQL…";
   try{const data=await request("/api/engines");if(data.ok!==true)throw new Error("Inventario no válido");renderInventory(data);}
@@ -118,6 +137,9 @@
   }catch(e){status.textContent="No se pudieron reparar las dependencias: "+e.message;}
  }
  $("nexus-runtime-inventory").addEventListener("click",inventory);
+ $("nexus-bridge-restart").addEventListener("click",restartBridge);
+ checkBridgeStatus();
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkBridgeStatus();});
  $("nexus-runtime-diagnostics").addEventListener("click",diagnostics);
  $("nexus-runtime-repair").addEventListener("click",repair);
  $("nexus-dependency-repair").addEventListener("click",repairDependencies);
