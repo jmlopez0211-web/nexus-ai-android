@@ -9,11 +9,11 @@
  let latest=null;
  const token=()=>typeof getBridgeToken==="function"?getBridgeToken():"";
  const base=()=>typeof getWifiBridgeUrl==="function"?getWifiBridgeUrl():"http://127.0.0.1:8766";
- async function request(path,body){
+ async function request(path,body,timeout=20000){
   const auth=token();if(!auth)throw new Error("Introduce y guarda el token del puente local en Centro Wi-Fi.");
   const options={method:body?"POST":"GET",cache:"no-store",headers:{Authorization:"Bearer "+auth}};
   if(body){options.headers["Content-Type"]="application/json";options.body=JSON.stringify(body);}
-  const response=await fetch(base()+path,{...options,signal:AbortSignal.timeout(20000)});
+  const response=await fetch(base()+path,{...options,signal:AbortSignal.timeout(timeout)});
   const data=await response.json().catch(()=>({error:"Respuesta no válida"}));
   if(!response.ok)throw new Error(data.error||("HTTP "+response.status));
   return data;
@@ -99,9 +99,24 @@
    latest={...(latest||{}),repair:data};
   }catch(e){status.textContent="No se pudo completar la reparación: "+e.message;}
  }
+
+ async function repairDependencies(){
+  if(!window.confirm("NEXUS comprobará sus dependencias principales e instalará únicamente las que falten en el Python del puente local. No actualizará deliberadamente paquetes ya presentes. ¿Continuar?"))return;
+  status.textContent="Comprobando e instalando, si hace falta, las dependencias ausentes…";
+  try{
+   const data=await request("/api/maintenance/repair-dependencies",{confirmed:true},200000);
+   results.prepend(card("Reparación de dependencias "+(data.ok?"correcta":"incompleta"),data.note));
+   (data.installed||[]).forEach(name=>results.prepend(card("✓ Dependencia disponible",name)));
+   (data.unresolved||[]).forEach(name=>results.prepend(card("✕ Dependencia pendiente",name)));
+   if(data.output)results.prepend(card("Salida de pip",data.output));
+   status.textContent=data.ok?"Dependencias comprobadas.":"La reparación no se completó por completo; consulta el resultado.";
+   latest={...(latest||{}),dependency_repair:data};
+  }catch(e){status.textContent="No se pudieron reparar las dependencias: "+e.message;}
+ }
  $("nexus-runtime-inventory").addEventListener("click",inventory);
  $("nexus-runtime-diagnostics").addEventListener("click",diagnostics);
  $("nexus-runtime-repair").addEventListener("click",repair);
+ $("nexus-dependency-repair").addEventListener("click",repairDependencies);
  $("nexus-runtime-export").addEventListener("click",()=>{
   if(!latest)return;
   const blob=new Blob([JSON.stringify(latest,null,2)],{type:"application/json"});
