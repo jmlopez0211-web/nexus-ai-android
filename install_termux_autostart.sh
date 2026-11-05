@@ -3,6 +3,7 @@
 set -euo pipefail
 umask 077
 PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+PYTHON="$PREFIX/bin/python"
 HOME="${HOME:-/data/data/com.termux/files/home}"
 APP_DIR="$HOME/nexus-ai-android"
 BOOT_DIR="$HOME/.termux/boot"
