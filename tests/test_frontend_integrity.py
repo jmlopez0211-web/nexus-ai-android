@@ -55,7 +55,7 @@ class FrontendIntegrityTests(unittest.TestCase):
         self.assertIn('"/api/audit"', html)
         self.assertIn("buildLocalAuditHtml", html)
         self.assertIn("El valor no se ha almacenado", html)
-        self.assertIn("No se siguen redirecciones", html)
+        self.assertIn("no sigue redirecciones", html)
 
 if __name__ == "__main__":
     unittest.main()
