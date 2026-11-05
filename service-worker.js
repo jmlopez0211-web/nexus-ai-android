@@ -1,5 +1,5 @@
 const CACHE_NAME = "nexus-shell-v1";
-const APP_SHELL = ["/", "/índice.html", "/manifest.webmanifest", "/icons/nexus-icon.svg"];
+const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/nexus-icon.svg"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -33,7 +33,7 @@ self.addEventListener("fetch", event => {
         }
         return response;
       } catch (_) {
-        return (await caches.match(request)) || (await caches.match("/")) || (await caches.match("/índice.html"));
+        return (await caches.match(request)) || (await caches.match("/"));
       }
     })());
     return;
