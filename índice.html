@@ -532,6 +532,7 @@ let nexusWifiInventory = null;
 let nexusWifiInventoryMeta = null;
 
 function formatWifiAge(seconds){
+  if(seconds===null||seconds===undefined||seconds==="")return "no disponible";
   const value=Number(seconds);
   if(!Number.isFinite(value)||value<0)return "no disponible";
   if(value<60)return Math.floor(value)+" s";
