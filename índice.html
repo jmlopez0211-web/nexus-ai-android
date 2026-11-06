@@ -1228,13 +1228,16 @@ function runWirelessAudit() {
   findings.forEach(f => {
     if (f.security === "Red abierta (sin cifrado anunciado)") counts.open++;
     if (String(f.capabilities || "").toUpperCase().includes("WPS")) counts.wps++;
-    if (/WEP|WPA heredado/.test(f.security)) counts.legacy++;
+    // Count legacy protocol/cipher advertisements even when WPA1 is mixed with WPA2.
+    const caps = String(f.capabilities || "").toUpperCase();
+    if (/WEP|\\[WPA-PSK|TKIP/.test(caps)) counts.legacy++;
     if (f.security.includes("WPA2")) counts.wpa2++;
     if (f.security.includes("WPA3")) counts.wpa3++;
     if (f.security.includes("mixto")) counts.mixed++;
     if (f.security === "Cifrado no identificable") counts.unknown++;
   });
-  latestWirelessAudit = {application:"NEXUS IA",module:"Wi-Fi defensive posture",generated_at:new Date().toISOString(),source:"Termux:API",network_count:findings.length,summary:counts,findings,limitations:["El análisis interpreta capacidades anunciadas por los puntos de acceso; no verifica la configuración interna del router.","Una red sin metadatos de capacidades se clasifica como desconocida, no como abierta.","WPS anunciado no demuestra que WPS sea explotable.","La auditoría no se conecta a puntos de acceso, no prueba credenciales ni realiza ataques."]};
+  const inventoryMeta = (typeof nexusWifiInventoryMeta === "object" && nexusWifiInventoryMeta) ? nexusWifiInventoryMeta : {};
+  latestWirelessAudit = {application:"NEXUS IA",module:"Wi-Fi defensive posture",generated_at:new Date().toISOString(),source:inventoryMeta.source || "Termux:API",inventory_mode:inventoryMeta.mode || "unknown",inventory_requested_at:inventoryMeta.requested_at || null,last_nonempty_api_response_at:inventoryMeta.last_nonempty_api_response_at || null,inventory_cache_age_seconds:inventoryMeta.cache_age_seconds ?? null,android_scan_age_seconds:inventoryMeta.scan_age_seconds ?? null,network_count:findings.length,summary:counts,findings,limitations:["El análisis interpreta capacidades anunciadas por los puntos de acceso; no verifica la configuración interna del router.","Una red sin metadatos de capacidades se clasifica como desconocida, no como abierta.","WPS anunciado no demuestra que WPS sea explotable.","La auditoría no se conecta a puntos de acceso, no prueba credenciales ni realiza ataques."]};
   root.replaceChildren();
   const metrics=document.createElement("div");metrics.className="web-result";
   [["Redes",findings.length],["Abiertas anunciadas",counts.open],["WEP/WPA heredado",counts.legacy],["WPA2",counts.wpa2],["WPA3",counts.wpa3],["WPS anunciado",counts.wps]].forEach(([label,value])=>{const box=document.createElement("div");box.className="metric";const strong=document.createElement("strong");strong.textContent=value;const small=document.createElement("small");small.textContent=label;box.append(strong,small);metrics.append(box);});
