@@ -186,6 +186,25 @@ footer{color:#62798a;border-color:#d7e4ed}
   <p class="muted">Termux:API consulta los resultados Wi-Fi que Android tiene disponibles; no garantiza iniciar un escaneo físico nuevo. La aplicación mostrará el origen y la antigüedad cuando Android facilite esa información.</p>
   <p id="nexus-wifi-status" class="muted" role="status" aria-live="polite">Sin consulta todavía. Los datos de ejemplo no se muestran como resultados reales.</p>
   <div id="wifi-networks" aria-live="polite"></div>
+  <section class="panel" id="nexus-router-recovery" aria-labelledby="nexus-router-recovery-title">
+    <h3 id="nexus-router-recovery-title">Recuperación de acceso al router</h3>
+    <p class="muted">Asistente para routers propios o con autorización. Si la clave se ha perdido y no hay ningún dispositivo conectado, guía la recuperación por vías del propietario y permite documentar el procedimiento sin guardar contraseñas.</p>
+    <div class="notice"><strong>Privacidad:</strong> no introduzcas aquí contraseñas actuales o antiguas. NEXUS no extrae claves ocultas ni intenta descifrarlas. El informe registra únicamente el método y el resultado.</div>
+    <label for="router-provider">Operador de Internet</label>
+    <select id="router-provider"><option value="">Seleccionar operador</option><option>Movistar</option><option>O2</option><option>Orange</option><option>Jazztel</option><option>Vodafone</option><option>Lowi</option><option>Digi</option><option>MásMóvil</option><option>Yoigo</option><option>Otro / desconocido</option></select>
+    <label for="router-brand">Fabricante del router</label>
+    <select id="router-brand"><option value="">Seleccionar fabricante</option><option>HGU / MitraStar</option><option>ASKEY</option><option>ZTE</option><option>Huawei</option><option>TP-Link</option><option>FRITZ!Box / AVM</option><option>Sercomm</option><option>Otro / desconocido</option></select>
+    <label for="router-model">Modelo (si aparece en la etiqueta)</label>
+    <input id="router-model" type="text" maxlength="100" placeholder="Ej.: HGU GPT-2741GNAC">
+    <label for="router-access-state">Situación actual</label>
+    <select id="router-access-state"><option value="no_devices">No hay ningún dispositivo conectado y la clave se ha perdido</option><option value="admin_access">Tengo acceso al panel de administración</option><option value="provider_access">Puedo entrar en la app o área de cliente del operador</option><option value="unknown">No sé qué acceso tengo disponible</option></select>
+    <label style="display:flex;gap:10px;align-items:flex-start"><input id="router-owner-confirmed" type="checkbox" style="width:auto;margin-top:4px"><span>Confirmo que el router es mío o tengo autorización expresa de su titular.</span></label>
+    <div class="audit-actions"><button id="router-recovery-guide" type="button">Generar guía de recuperación</button><button id="router-recovery-reset" type="button">Reiniciar guía</button></div>
+    <p id="router-recovery-status" class="muted" role="status" aria-live="polite">Selecciona los datos disponibles y confirma la autorización.</p>
+    <div id="router-recovery-results" aria-live="polite"></div>
+    <div class="audit-actions"><button id="router-recovery-export" type="button" disabled>Exportar informe de recuperación (JSON)</button><button id="router-recovery-print" type="button" disabled>Imprimir / guardar PDF</button></div>
+  </section>
+
   <div class="panel" style="margin-top:14px">
     <h3>Servicios expuestos en tu red local</h3>
     <p class="muted">Comprueba un único equipo de tu propia red. Se prueban 20 puertos TCP habituales; no se recorre la subred ni se intenta iniciar sesión.</p>
@@ -1354,6 +1373,7 @@ document.getElementById("export-wifi-simulation").addEventListener("click",()=>{
   }
 })();
 </script>
+<script src="/router-recovery.js" defer></script>
 <script src="/runtime-center.js" defer></script>
 </body>
 </html>
