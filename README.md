@@ -161,3 +161,13 @@ El panel ofrece además una reparación de dependencias Python ausentes, con con
 ## Arranque automático y recuperación Android
 
 Consulta [README_TERMUX_AUTOSTART.md](README_TERMUX_AUTOSTART.md) para instalar Termux:Boot, el supervisor de reinicio y la comprobación de salud. Requiere una instalación inicial única en Termux por el aislamiento de aplicaciones de Android; después el arranque y la recuperación del puente son automáticos.
+
+
+## Recuperación guiada de routers
+
+El Centro Wi-Fi incorpora una guía local para recuperar el acceso a routers propios o autorizados cuando se ha perdido la clave y no hay dispositivos conectados. Recoge operador, fabricante, modelo y situación de acceso; orienta sobre etiqueta del equipo, app/área de cliente, administración legítima y restablecimiento de fábrica como último recurso. Incluye una lista de pasos verificables y exportación JSON o impresión/PDF.
+
+- No solicita, almacena ni exporta contraseñas, claves administrativas ni números de serie.
+- No extrae ni descifra credenciales guardadas y no se conecta ni modifica el router.
+- Advierte que el restablecimiento puede borrar parámetros de Internet, telefonía, IPTV y configuración personalizada; se debe confirmar el procedimiento con el operador.
+- El informe documenta la guía y el estado marcado por el usuario; no certifica que la recuperación haya funcionado hasta verificar la conexión y los servicios.
