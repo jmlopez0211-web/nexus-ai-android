@@ -679,7 +679,7 @@ async function scanNexusWifi(){
     const base=getWifiBridgeUrl();
     const token=getBridgeToken();
     if(!token)throw new Error("Falta el token local. Pégalo desde el archivo privado de Termux y pulsa Guardar conexión.");
-    const response=await fetch(base+"/api/wifi",{method:"GET",headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:AbortSignal.timeout(18000)});
+    const response=await fetch(base+"/api/wifi",{method:"GET",headers:{Authorization:"Bearer "+token},cache:"no-store",mode:"cors",signal:AbortSignal.timeout(32000)});
     let data;
     try{data=await response.json();}catch(_){throw new Error("El puente respondió con un formato no válido (HTTP "+response.status+").");}
     if(response.status===401)throw new Error("El token guardado en Chrome no coincide con el token que espera Termux. Pulsa «Olvidar token», copia de nuevo el token actual desde Termux, pégalo y pulsa «Guardar dirección».");
@@ -702,6 +702,15 @@ async function scanNexusWifi(){
     };
     list.replaceChildren();
     const scanAgeLabel=formatWifiAge(data.scan_age_seconds);
+    const diagnostic=document.createElement("p");
+    diagnostic.className="muted";
+    diagnostic.textContent="Diagnóstico: HTTP "+response.status+
+      " · origen "+(data.source||"no indicado")+
+      " · resultados recibidos "+(Number.isFinite(Number(data.count))?Number(data.count):count)+
+      " · respuesta no vacía nueva "+(data.api_returned_data===true?"sí":"no")+
+      " · caché "+(data.cache_age_seconds==null?"no disponible":formatWifiAge(data.cache_age_seconds))+
+      " · antigüedad Android "+scanAgeLabel+"."; 
+    list.append(diagnostic);
     if(usingPrevious){
       status.textContent="Android no entregó redes en esta consulta. Se conserva el inventario de esta sesión ("+count+" redes); no es una lectura nueva.";
     }else if(isCached){
@@ -709,7 +718,7 @@ async function scanNexusWifi(){
     }else if(count){
       status.textContent="Termux:API respondió con "+count+" redes. Antigüedad indicada por Android: "+scanAgeLabel+". Esta consulta lee los resultados disponibles; no fuerza por sí sola un escaneo físico.";
     }else{
-      status.textContent="Termux:API respondió correctamente, pero Android no entregó redes en esta consulta. No es un fallo del motor Python: Android puede limitar o retrasar los resultados Wi-Fi.";
+      status.textContent="El puente local y el token han respondido correctamente (HTTP "+response.status+"), pero Termux:API ha devuelto 0 redes y no hay inventario reciente en caché. El problema está en la disponibilidad de resultados Wi-Fi de Android, no en la autenticación.";
       const help=document.createElement("details");help.className="wifi-help";
       const heading=document.createElement("summary");heading.textContent="Pasos para recuperar las redes Wi-Fi";
       const steps=document.createElement("ol");
