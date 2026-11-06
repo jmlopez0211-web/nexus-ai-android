@@ -98,7 +98,7 @@ button:hover{transform:translateY(-1px);border-color:var(--neon);background:#103
 .metric{padding:12px;border:1px solid #20455b;border-radius:12px;background:#081522}
 .metric strong{display:block;font-size:23px;color:var(--neon)}
 .finding{padding:12px;margin:9px 0;border:1px solid #24445a;border-left:4px solid var(--blue);border-radius:10px;background:#081522}
-.finding.medium{border-left-color:#ffbf5b}.finding.low{border-left-color:#78aaff}.finding.info{border-left-color:#a879ff}
+.finding.high{border-left-color:#c62828}.finding.medium{border-left-color:#ffbf5b}.finding.low{border-left-color:#78aaff}.finding.info{border-left-color:#a879ff}
 .finding h4{margin:0 0 6px}.finding p{margin:5px 0;color:#b9ccda;line-height:1.45}
 .kicker{color:var(--neon);font-size:11px;letter-spacing:2px;font-weight:800}
 .audit-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
@@ -1211,7 +1211,7 @@ function runWirelessAudit() {
   [["Redes",findings.length],["Abiertas anunciadas",counts.open],["WEP/WPA heredado",counts.legacy],["WPA2",counts.wpa2],["WPA3",counts.wpa3],["WPS anunciado",counts.wps]].forEach(([label,value])=>{const box=document.createElement("div");box.className="metric";const strong=document.createElement("strong");strong.textContent=value;const small=document.createElement("small");small.textContent=label;box.append(strong,small);metrics.append(box);});
   root.append(metrics);
   findings.forEach(f=>{
-    const box=document.createElement("article");box.className="finding "+(f.severity==="high"?"medium":f.severity==="medium"?"low":"info");
+    const box=document.createElement("article");const severityClass=["high","medium","low","info"].includes(f.severity)?f.severity:"info";box.className="finding "+severityClass;
     const h=document.createElement("h4");h.textContent=f.ssid+" · "+f.security;
     const p=document.createElement("p");p.textContent="Señal: "+f.signal+" ("+(f.rssi===null?"N/D":f.rssi+" dBm")+") · "+(f.frequency_mhz??"N/D")+" MHz";
     const detail=document.createElement("p");detail.textContent=f.flags.length?f.flags.join(" "):"No se observan indicadores básicos de configuración débil en los datos anunciados.";
