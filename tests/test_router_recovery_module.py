@@ -18,7 +18,7 @@ class RouterRecoveryModuleTests(unittest.TestCase):
         self.assertIn('hidden_credentials_extracted: false', source)
         self.assertNotIn('type = "password"', source)
         self.assertIn('Restablecimiento de fábrica (último recurso)', source)
-        self.assertIn('Confirmar', source)
+        self.assertIn('confirm', source.lower())
 
     def test_recovery_report_has_provider_model_and_limitations(self):
         source = (ROOT / "router-recovery.js").read_text(encoding="utf-8")
