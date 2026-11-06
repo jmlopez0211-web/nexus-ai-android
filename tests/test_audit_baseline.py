@@ -29,4 +29,24 @@ class BaselineTests(unittest.TestCase):
    x["target"]="8.8.8.8"
    with self.assertRaises(ValueError): baseline.compare_and_store_baseline(x)
 
+ def test_corrupt_baseline_is_preserved_and_not_replaced(self):
+  with tempfile.TemporaryDirectory() as d,patch.object(baseline,"BASELINE_DIR",Path(d)):
+   path=baseline._path("192.168.1.1")
+   path.parent.mkdir(parents=True,exist_ok=True)
+   original="{not valid json"
+   path.write_text(original,encoding="utf-8")
+   with self.assertRaisesRegex(ValueError,"dañada"):
+    baseline.compare_and_store_baseline(report([80,443]))
+   self.assertEqual(path.read_text(encoding="utf-8"),original)
+
+ def test_incompatible_baseline_is_preserved(self):
+  with tempfile.TemporaryDirectory() as d,patch.object(baseline,"BASELINE_DIR",Path(d)):
+   path=baseline._path("192.168.1.1")
+   path.parent.mkdir(parents=True,exist_ok=True)
+   original='{"schema_version":999,"open_ports":[],"services":{}}'
+   path.write_text(original,encoding="utf-8")
+   with self.assertRaisesRegex(ValueError,"incompatible"):
+    baseline.compare_and_store_baseline(report([80]))
+   self.assertEqual(path.read_text(encoding="utf-8"),original)
+
 if __name__=="__main__": unittest.main()

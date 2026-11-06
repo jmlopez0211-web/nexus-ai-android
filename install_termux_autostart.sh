@@ -59,7 +59,7 @@ for entry in entries:
         continue
     proc = "/proc/" + entry
     try:
-        args = open(proc + "/cmdline", "rb").read().split(b"\\0")
+        args = open(proc + "/cmdline", "rb").read().split(b"\0")
         cwd = os.path.realpath(proc + "/cwd")
         names = [os.fsdecode(arg) for arg in args if arg]
         bridge_args = any(os.path.basename(arg) == "nexus_bridge_termux.py" for arg in names)
