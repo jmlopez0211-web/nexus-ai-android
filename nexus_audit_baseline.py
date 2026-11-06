@@ -43,10 +43,24 @@ def _snapshot(report):
 def _path(target): return BASELINE_DIR / (_safe_target(target).replace(".","_")+".json")
 
 def _load(path):
+    """Load an existing baseline without disguising corruption as a first scan."""
     try:
-        data=json.loads(path.read_text(encoding="utf-8"))
-        return data if data.get("schema_version")==BASELINE_SCHEMA and isinstance(data.get("open_ports"),list) else None
-    except (OSError,ValueError,TypeError,json.JSONDecodeError): return None
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise ValueError("No se pudo leer la línea base existente; se conserva sin cambios.") from exc
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("La línea base existente está dañada; no se sobrescribirá.") from exc
+    if not isinstance(data, dict):
+        raise ValueError("La línea base existente no tiene un formato válido; no se sobrescribirá.")
+    if data.get("schema_version") != BASELINE_SCHEMA:
+        raise ValueError("La línea base usa una versión incompatible; no se sobrescribirá.")
+    if not isinstance(data.get("open_ports"), list) or not isinstance(data.get("services"), dict):
+        raise ValueError("La estructura de la línea base no es válida; no se sobrescribirá.")
+    return data
 
 def _save(path,data):
     path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
