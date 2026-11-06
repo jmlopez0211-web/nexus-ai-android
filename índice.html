@@ -185,6 +185,7 @@ footer{color:#62798a;border-color:#d7e4ed}
   </div>
   <p class="muted">Termux:API consulta los resultados Wi-Fi que Android tiene disponibles; no garantiza iniciar un escaneo físico nuevo. La aplicación mostrará el origen y la antigüedad cuando Android facilite esa información.</p>
   <p id="nexus-wifi-status" class="muted" role="status" aria-live="polite">Sin consulta todavía. Los datos de ejemplo no se muestran como resultados reales.</p>
+  <div id="wifi-networks" aria-live="polite"></div>
   <div class="panel" style="margin-top:14px">
     <h3>Servicios expuestos en tu red local</h3>
     <p class="muted">Comprueba un único equipo de tu propia red. Se prueban 20 puertos TCP habituales; no se recorre la subred ni se intenta iniciar sesión.</p>
@@ -228,7 +229,6 @@ footer{color:#62798a;border-color:#d7e4ed}
       <p class="muted">Carpeta: ~/.nexus-ai/plugins/modules/ · Registro: ~/.nexus-ai/plugins/registry.json. Añade un archivo .py y una entrada JSON con id, name, entrypoint, description y approved:false. Revisa el código antes de cambiar approved a true. No se instala ni ejecuta código descargado automáticamente.</p>
     </details>
   </section>
-  <div id="wifi-networks" aria-live="polite"></div>
 
   <section class="panel" id="wireless-audit-panel" aria-labelledby="wireless-audit-title">
     <h3 id="wireless-audit-title">Auditoría defensiva de seguridad Wi-Fi</h3>
