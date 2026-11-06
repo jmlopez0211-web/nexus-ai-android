@@ -9,6 +9,9 @@ class RouterRecoveryModuleTests(unittest.TestCase):
         html = (ROOT / "índice.html").read_text(encoding="utf-8")
         self.assertIn('id="nexus-router-recovery"', html)
         self.assertIn('<script src="/router-recovery.js" defer></script>', html)
+        worker = (ROOT / "service-worker.js").read_text(encoding="utf-8")
+        self.assertIn('"/router-recovery.js"', worker)
+        self.assertIn('nexus-shell-v5', worker)
 
     def test_recovery_module_never_requests_or_exports_credentials(self):
         source = (ROOT / "router-recovery.js").read_text(encoding="utf-8")
