@@ -1230,7 +1230,7 @@ function runWirelessAudit() {
     if (String(f.capabilities || "").toUpperCase().includes("WPS")) counts.wps++;
     // Count legacy protocol/cipher advertisements even when WPA1 is mixed with WPA2.
     const caps = String(f.capabilities || "").toUpperCase();
-    if (/WEP|\\[WPA-PSK|TKIP/.test(caps)) counts.legacy++;
+    if (/WEP|\[WPA-PSK|TKIP/.test(caps)) counts.legacy++;
     if (f.security.includes("WPA2")) counts.wpa2++;
     if (f.security.includes("WPA3")) counts.wpa3++;
     if (f.security.includes("mixto")) counts.mixed++;
