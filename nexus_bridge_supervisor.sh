@@ -41,9 +41,11 @@ cleanup() {
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   sleep 1
   EXISTING_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
-  if [ -n "$EXISTING_PID" ] && case "$EXISTING_PID" in *[!0-9]*) false ;; *) kill -0 "$EXISTING_PID" 2>/dev/null && tr '\\0' ' ' < "/proc/$EXISTING_PID/cmdline" 2>/dev/null | grep -Fq "$APP_DIR/nexus_bridge_supervisor.sh" ;; esac; then
-    log "Ya existe un supervisor activo (PID $EXISTING_PID); se omite el duplicado."
-    exit 0
+  if [[ "$EXISTING_PID" =~ ^[0-9]+$ ]] && kill -0 "$EXISTING_PID" 2>/dev/null; then
+    if tr '\0' ' ' < "/proc/$EXISTING_PID/cmdline" 2>/dev/null | grep -Fq "$APP_DIR/nexus_bridge_supervisor.sh"; then
+      log "Ya existe un supervisor activo (PID $EXISTING_PID); se omite el duplicado."
+      exit 0
+    fi
   fi
   rm -rf "$LOCK_DIR"
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -51,7 +53,7 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     exit 0
   fi
 fi
-printf '%s\\n' "$" > "$LOCK_DIR/pid"
+printf '%s\n' "$$" > "$LOCK_DIR/pid"
 chmod 600 "$LOCK_DIR/pid"
 trap cleanup EXIT INT TERM
 
