@@ -1,0 +1,15 @@
+{
+  "settings": {
+    "timeout": 45,
+    "debug_mode": false,
+    "logs_enabled": true,
+    "auto_execute": false,
+    "report_directory": "reports",
+    "log_directory": "logs",
+    "bridge_host": "127.0.0.1",
+    "bridge_port": 8766
+  },
+  "paths": {
+    "nmap": "nmap"
+  }
+}
