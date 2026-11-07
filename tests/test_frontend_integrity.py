@@ -81,6 +81,10 @@ class FrontendIntegrityTests(unittest.TestCase):
         self.assertIn("nexus-bridge", installer)
         self.assertIn("/api/bridge/control", bridge)
         self.assertIn("supervisor_active", bridge)
+        self.assertIn("bridge-supervisor.lock", supervisor)
+        self.assertIn("Atomic singleton guard", supervisor)
+        starter = (ROOT / "nexus_bridge_start.sh").read_text(encoding="utf-8")
+        self.assertIn('nohup bash "$APP_DIR/nexus_bridge_supervisor.sh"', starter)
 
     def test_baseline_change_tracking_and_professional_report_are_integrated(self):
         html = (ROOT / "índice.html").read_text(encoding="utf-8")
