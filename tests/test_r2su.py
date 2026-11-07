@@ -51,7 +51,7 @@ class R2SUTests(unittest.TestCase):
 
     def test_periodic_run_reschedules(self):
         created = r2su.create_task("WiFi", "wifi_inventory", interval_seconds=60)
-        before = r2su.list_tasks()["tasks"][0]["next_run"]
+        before = r2su.list_tasks()["tasks"][0]["next_run_at"]
         with patch.object(r2su, "_execute", return_value={"ok": True, "network_count": 4}):
             r2su.run_task(created["task_id"])
         after = r2su.list_tasks()["tasks"][0]["next_run"]
