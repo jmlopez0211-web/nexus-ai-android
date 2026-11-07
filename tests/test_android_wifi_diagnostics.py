@@ -1,10 +1,20 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import nexus_android_wifi_diagnostics as diag
 
 
 class AndroidWifiDiagnosticsTests(unittest.TestCase):
+    def test_diagnostic_is_integrated_in_bridge_and_r2su(self):
+        root = Path(__file__).resolve().parents[1]
+        bridge = (root / "nexus_bridge_termux.py").read_text(encoding="utf-8")
+        scheduler = (root / "nexus_r2su.py").read_text(encoding="utf-8")
+        self.assertIn('if path == "/api/wifi/diagnostics":', bridge)
+        self.assertIn("from nexus_android_wifi_diagnostics import diagnose_wifi_driver", bridge)
+        self.assertIn('"wifi_driver_diagnostics"', scheduler)
+        self.assertIn('if task_type == "wifi_driver_diagnostics":', scheduler)
+
     def test_report_contains_hardware_android_and_termux_sections(self):
         with patch.object(diag, "inspect_hardware", return_value={
             "interface": "wlan0", "available": True, "state": "up",
