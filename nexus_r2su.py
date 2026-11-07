@@ -12,6 +12,7 @@ import threading
 import time
 import uuid
 from datetime import datetime, timezone
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +48,7 @@ def _connect():
 
 
 def initialize():
-    with _LOCK, _connect() as conn:
+    with _LOCK, closing(_connect()) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY, name TEXT NOT NULL, task_type TEXT NOT NULL,
