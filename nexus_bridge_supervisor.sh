@@ -8,6 +8,7 @@ APP_DIR="$HOME/nexus-ai-android"
 DATA_DIR="$HOME/.cache/nexus-ai"
 LOG_FILE="$DATA_DIR/bridge-supervisor.log"
 PID_FILE="$DATA_DIR/bridge-supervisor.pid"
+LOCK_DIR="$DATA_DIR/bridge-supervisor.lock"
 CHILD_PID_FILE="$DATA_DIR/bridge-child.pid"
 STOP_FILE="$DATA_DIR/STOP_BRIDGE"
 TOKEN_FILE="$HOME/.nexus_bridge_token"
@@ -26,12 +27,34 @@ rotate_log() {
 }
 write_pid() { printf '%s\n' "$$" > "$PID_FILE"; chmod 600 "$PID_FILE"; }
 cleanup() {
-  if [ -n "${BRIDGE_PID:-}" ] && kill -0 "$BRIDGE_PID" 2>/dev/null; then
+  if [ -n "\${BRIDGE_PID:-}" ] && kill -0 "$BRIDGE_PID" 2>/dev/null; then
     kill -TERM "$BRIDGE_PID" 2>/dev/null || true
     wait "$BRIDGE_PID" 2>/dev/null || true
   fi
   rm -f "$PID_FILE" "$CHILD_PID_FILE"
+  if [ -f "$LOCK_DIR/pid" ] && [ "$(cat "$LOCK_DIR/pid" 2>/dev/null || true)" = "$$" ]; then
+    rm -rf "$LOCK_DIR"
+  fi
 }
+
+# Atomic singleton guard: duplicate start requests exit without touching the live bridge.
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  sleep 1
+  EXISTING_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+  if [[ "$EXISTING_PID" =~ ^[0-9]+$ ]] && kill -0 "$EXISTING_PID" 2>/dev/null; then
+    if tr '\0' ' ' < "/proc/$EXISTING_PID/cmdline" 2>/dev/null | grep -Fq "$APP_DIR/nexus_bridge_supervisor.sh"; then
+      log "Ya existe un supervisor activo (PID $EXISTING_PID); se omite el duplicado."
+      exit 0
+    fi
+  fi
+  rm -rf "$LOCK_DIR"
+  if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    log "No se pudo adquirir el bloqueo del supervisor; se omite esta instancia."
+    exit 0
+  fi
+fi
+printf '%s\n' "$$" > "$LOCK_DIR/pid"
+chmod 600 "$LOCK_DIR/pid"
 trap cleanup EXIT INT TERM
 
 if [ ! -f "$APP_DIR/nexus_bridge_termux.py" ] || [ ! -f "$APP_DIR/nexus_runtime_inventory.py" ]; then
