@@ -12,7 +12,7 @@ class WifiUiDiagnosticsTests(unittest.TestCase):
 
     def test_empty_result_explains_authentication_and_android_scan_separately(self):
         html = (ROOT / "índice.html").read_text(encoding="utf-8")
-        self.assertIn("HTTP "+response.status", html)
+        self.assertIn('HTTP "+response.status', html)
         self.assertIn("Termux:API ha devuelto 0 redes", html)
         self.assertIn("respuesta no vacía nueva", html)
         self.assertIn("antigüedad Android", html)

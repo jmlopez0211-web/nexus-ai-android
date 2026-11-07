@@ -171,3 +171,29 @@ El Centro Wi-Fi incorpora una guía local para recuperar el acceso a routers pro
 - No extrae ni descifra credenciales guardadas y no se conecta ni modifica el router.
 - Advierte que el restablecimiento puede borrar parámetros de Internet, telefonía, IPTV y configuración personalizada; se debe confirmar el procedimiento con el operador.
 - El informe documenta la guía y el estado marcado por el usuario; no certifica que la recuperación haya funcionado hasta verificar la conexión y los servicios.
+
+
+## R2SU — Programador y ejecutor de tareas NEXUS
+
+R2SU es el programador persistente del núcleo Python. Se inicia junto con el puente Termux y conserva tareas e historial en SQLite local (`~/.cache/nexus-ai/r2su.sqlite3`, permisos privados). API autenticada del puente:
+
+- `GET /api/r2su`: estado, tareas e historial.
+- `POST /api/r2su`: acciones `create`, `run`, `pause`, `resume`, `delete`, `start` y `stop`.
+
+Tipos de tarea disponibles:
+- `runtime_diagnostics`: diagnóstico del entorno Python/Android.
+- `wifi_inventory`: consulta Termux:API; lee los últimos resultados Android y no fuerza un escaneo de radio.
+- `lan_scan`: inventario TCP de un único IPv4 privado RFC1918; requiere `params.authorized=true`.
+
+Ejemplo de creación de una tarea periódica (la solicitud debe incluir el token Bearer local):
+
+```json
+{"action":"create","name":"Diagnóstico diario","task_type":"runtime_diagnostics","params":{},"interval_seconds":86400}
+```
+
+Ejemplo de tarea única inmediata: `{"action":"create","name":"Inventario Wi-Fi","task_type":"wifi_inventory","params":{}}`.
+Para ejecutar manualmente una tarea existente: `{"action":"run","task_id":"ID"}`.
+
+R2SU no ejecuta comandos shell arbitrarios, código Python enviado por la API, plugins ni herramientas ofensivas. Los intervalos admitidos van de 60 segundos a 30 días; máximo 100 tareas y 500 ejecuciones conservadas. Pausar o detener el programador no borra los datos. La ejecución programada depende de que el puente Termux esté activo; las tareas vencidas se procesan al volver a iniciar el puente.
+
+Pruebas: `python -m unittest tests.test_r2su -v` (o la suite completa con `python -m unittest discover -s tests -v`).

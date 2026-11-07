@@ -18,6 +18,7 @@ from nexus_plugin_manager import list_plugins, launch_plugin
 from nexus_security_audit import build_security_report
 from nexus_audit_baseline import compare_and_store_baseline
 from nexus_runtime_inventory import inventory as runtime_inventory, diagnostics as runtime_diagnostics, repair_owned_storage, run_runtime_check, repair_missing_dependencies
+from nexus_r2su import (create_task as r2su_create_task, list_tasks as r2su_list_tasks, run_task as r2su_run_task, set_task_enabled as r2su_set_task_enabled, delete_task as r2su_delete_task, start_scheduler as r2su_start_scheduler, stop_scheduler as r2su_stop_scheduler, scheduler_status as r2su_status)
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("NEXUS_BRIDGE_PORT", "8766"))
@@ -306,6 +307,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._reply(200, runtime_inventory(), origin)
         if path == "/api/diagnostics":
             return self._reply(200, runtime_diagnostics(), origin)
+        if path == "/api/r2su":
+            try:
+                result = r2su_status()
+                result.update(r2su_list_tasks(include_history=True))
+                return self._reply(200, result, origin)
+            except Exception as exc:
+                return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
         if path == "/api/plugins":
             try:
                 return self._reply(200, {"ok": True, "plugins": list_plugins()}, origin)
@@ -367,6 +375,42 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized(origin):
             return
         path = urlparse(self.path).path
+        if path == "/api/r2su":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length < 1 or length > 4096:
+                    return self._reply(413, {"ok": False, "error": "Tamaño de solicitud no válido"}, origin)
+                data = json.loads(self.rfile.read(length))
+                if not isinstance(data, dict):
+                    return self._reply(400, {"ok": False, "error": "El cuerpo JSON debe ser un objeto"}, origin)
+                action = str(data.get("action", ""))
+                if action == "create":
+                    result = r2su_create_task(
+                        data.get("name", ""), data.get("task_type", ""),
+                        data.get("params", {}), data.get("interval_seconds"),
+                        data.get("run_at")
+                    )
+                elif action == "run":
+                    result = r2su_run_task(str(data.get("task_id", "")))
+                elif action == "pause":
+                    result = r2su_set_task_enabled(str(data.get("task_id", "")), False)
+                elif action == "resume":
+                    result = r2su_set_task_enabled(str(data.get("task_id", "")), True)
+                elif action == "delete":
+                    result = r2su_delete_task(str(data.get("task_id", "")))
+                elif action == "start":
+                    result = r2su_start_scheduler()
+                elif action == "stop":
+                    result = r2su_stop_scheduler()
+                else:
+                    return self._reply(400, {"ok": False, "error": "Acción R2SU no válida"}, origin)
+                return self._reply(200, result, origin)
+            except PermissionError as exc:
+                return self._reply(403, {"ok": False, "error": str(exc)}, origin)
+            except (ValueError, json.JSONDecodeError) as exc:
+                return self._reply(400, {"ok": False, "error": str(exc)}, origin)
+            except Exception as exc:
+                return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
         if path == "/api/bridge/control":
             try:
                 length = int(self.headers.get("Content-Length", "0"))
@@ -495,6 +539,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     global SERVER
+    r2su_start_scheduler()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     SERVER = server
     print(f"NEXUS bridge: http://{HOST}:{PORT} (solo loopback)")

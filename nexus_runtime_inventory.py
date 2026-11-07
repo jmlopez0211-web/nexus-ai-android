@@ -84,6 +84,7 @@ INTERNAL_MODULES = (
     ("nexus_audit_baseline", "Línea base de auditoría", "nexus_audit_baseline.py"),
     ("nexus_bridge_termux", "Puente Android local", "nexus_bridge_termux.py"),
     ("nexus_runtime_inventory", "Inventario de motores", "nexus_runtime_inventory.py"),
+    ("nexus_r2su", "Programador y ejecutor R2SU", "nexus_r2su.py"),
 )
 
 PYTHON_MODULES = (
