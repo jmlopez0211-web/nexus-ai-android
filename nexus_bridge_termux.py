@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 from nexus_wireless_engine import inventory_tools, run_tool_module, _termux_wifi_command
+from nexus_android_wifi_diagnostics import diagnose_wifi_driver
 from nexus_plugin_manager import list_plugins, launch_plugin
 from nexus_security_audit import build_security_report
 from nexus_audit_baseline import compare_and_store_baseline
@@ -301,6 +302,11 @@ class Handler(BaseHTTPRequestHandler):
                 "cached_networks": cached_count, "cache_age_seconds": cache_age,
                 "wifi_data_mode": "latest_android_scan_results",
             }, origin)
+        if path == "/api/wifi/diagnostics":
+            try:
+                return self._reply(200, diagnose_wifi_driver(), origin)
+            except Exception as exc:
+                return self._reply(500, {"ok": False, "error": type(exc).__name__}, origin)
         if path == "/api/tooling":
             return self._reply(200, inventory_tools(), origin)
         if path == "/api/engines":
