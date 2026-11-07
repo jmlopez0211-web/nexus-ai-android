@@ -27,7 +27,7 @@ rotate_log() {
 }
 write_pid() { printf '%s\n' "$$" > "$PID_FILE"; chmod 600 "$PID_FILE"; }
 cleanup() {
-  if [ -n "\${BRIDGE_PID:-}" ] && kill -0 "$BRIDGE_PID" 2>/dev/null; then
+  if [ -n "${BRIDGE_PID:-}" ] && kill -0 "$BRIDGE_PID" 2>/dev/null; then
     kill -TERM "$BRIDGE_PID" 2>/dev/null || true
     wait "$BRIDGE_PID" 2>/dev/null || true
   fi
