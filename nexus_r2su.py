@@ -72,8 +72,8 @@ def initialize():
 
 
 def _validate_task(task_type: str, params: dict[str, Any]):
-    if task_type not in {"runtime_diagnostics", "wifi_inventory", "lan_scan"}:
-        raise ValueError("Tipo de tarea no permitido. Usa runtime_diagnostics, wifi_inventory o lan_scan.")
+    if task_type not in {"runtime_diagnostics", "wifi_inventory", "wifi_driver_diagnostics", "lan_scan"}:
+        raise ValueError("Tipo de tarea no permitido. Usa runtime_diagnostics, wifi_inventory, wifi_driver_diagnostics o lan_scan.")
     if not isinstance(params, dict):
         raise ValueError("params debe ser un objeto JSON.")
     if task_type == "lan_scan":
@@ -100,6 +100,9 @@ def _execute(task_type: str, params: dict[str, Any]):
     if task_type == "wifi_inventory":
         from nexus_wireless_engine import _wifi_api_check
         return _wifi_api_check(timeout=20)
+    if task_type == "wifi_driver_diagnostics":
+        from nexus_android_wifi_diagnostics import diagnose_wifi_driver
+        return diagnose_wifi_driver()
     if task_type == "lan_scan":
         from nexus_bridge_termux import scan_host
         return scan_host(params["target"])
