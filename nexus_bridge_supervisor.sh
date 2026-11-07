@@ -32,7 +32,7 @@ cleanup() {
     wait "$BRIDGE_PID" 2>/dev/null || true
   fi
   rm -f "$PID_FILE" "$CHILD_PID_FILE"
-  if [ -f "$LOCK_DIR/pid" ] && [ "$(cat "$LOCK_DIR/pid" 2>/dev/null || true)" = "$" ]; then
+  if [ -f "$LOCK_DIR/pid" ] && [ "$(cat "$LOCK_DIR/pid" 2>/dev/null || true)" = "$$" ]; then
     rm -rf "$LOCK_DIR"
   fi
 }
