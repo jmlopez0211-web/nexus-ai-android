@@ -115,14 +115,14 @@ def _safe_json(value: Any) -> str:
 
 def list_tasks(include_history: bool = False):
     initialize()
-    with _LOCK, _connect() as conn:
+    with _LOCK, closing(_connect()) as conn:
         rows = conn.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
         tasks = []
         for row in rows:
             item = dict(row)
             item["params"] = json.loads(item["params"])
             item["enabled"] = bool(item["enabled"])
-            item["next_run_at"] = datetime.fromtimestamp(item.pop("next_run"), timezone.utc).isoformat()
+            item["next_run_at"] = datetime.fromtimestamp(item["next_run"], timezone.utc).isoformat()
             tasks.append(item)
         response = {"ok": True, "scheduler": "R2SU", "version": VERSION, "tasks": tasks}
         if include_history:
@@ -164,7 +164,7 @@ def create_task(name: str, task_type: str, params: dict[str, Any] | None = None,
         due = time.time() + interval_seconds if interval_seconds else time.time()
     task_id = uuid.uuid4().hex[:12]
     now = _now()
-    with _LOCK, _connect() as conn:
+    with _LOCK, closing(_connect()) as conn:
         count = conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
         if count >= MAX_TASKS:
             raise ValueError("Se alcanzó el límite de 100 tareas.")
@@ -179,7 +179,7 @@ def create_task(name: str, task_type: str, params: dict[str, Any] | None = None,
 
 def run_task(task_id: str):
     initialize()
-    with _LOCK, _connect() as conn:
+    with _LOCK, closing(_connect()) as conn:
         row = conn.execute("SELECT * FROM tasks WHERE id=?", (str(task_id),)).fetchone()
     if row is None:
         raise ValueError("Tarea no encontrada.")
@@ -192,7 +192,7 @@ def run_task(task_id: str):
         ok = False
         payload = {"ok": False, "error": type(exc).__name__, "message": str(exc)[:500]}
     finished = _now()
-    with _LOCK, _connect() as conn:
+    with _LOCK, closing(_connect()) as conn:
         conn.execute(
             "INSERT INTO runs(task_id,started_at,finished_at,ok,result) VALUES(?,?,?,?,?)",
             (row["id"], started, finished, int(ok), _safe_json(payload))
@@ -211,7 +211,7 @@ def run_task(task_id: str):
 
 def set_task_enabled(task_id: str, enabled: bool):
     initialize()
-    with _LOCK, _connect() as conn:
+    with _LOCK, closing(_connect()) as conn:
         cursor = conn.execute("UPDATE tasks SET enabled=?,updated_at=? WHERE id=?",
                               (int(bool(enabled)), _now(), str(task_id)))
         conn.commit()
@@ -223,7 +223,7 @@ def set_task_enabled(task_id: str, enabled: bool):
 
 def delete_task(task_id: str):
     initialize()
-    with _LOCK, _connect() as conn:
+    with _LOCK, closing(_connect()) as conn:
         conn.execute("DELETE FROM runs WHERE task_id=?", (str(task_id),))
         cursor = conn.execute("DELETE FROM tasks WHERE id=?", (str(task_id),))
         conn.commit()
@@ -238,7 +238,7 @@ def _scheduler_loop():
     while not _STOP:
         now = time.time()
         due_id = None
-        with _LOCK, _connect() as conn:
+        with _LOCK, closing(_connect()) as conn:
             row = conn.execute(
                 "SELECT id FROM tasks WHERE enabled=1 AND next_run<=? ORDER BY next_run LIMIT 1", (now,)
             ).fetchone()
