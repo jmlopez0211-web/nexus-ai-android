@@ -20,6 +20,7 @@ fi
 mkdir -p "$BOOT_DIR" "$CONFIG_DIR" "$DATA_DIR"
 chmod 700 "$HOME/.termux" "$BOOT_DIR" "$CONFIG_DIR" "$DATA_DIR"
 chmod 700 "$APP_DIR/nexus_bridge_supervisor.sh"
+if [ -f "$APP_DIR/nexus_bridge_watchdog.sh" ]; then chmod 700 "$APP_DIR/nexus_bridge_watchdog.sh"; fi
 cp "$APP_DIR/termux-boot/00-nexus-bridge" "$BOOT_DIR/00-nexus-bridge"
 chmod 700 "$BOOT_DIR/00-nexus-bridge"
 if [ -s "$DATA_DIR/bridge-supervisor.pid" ]; then

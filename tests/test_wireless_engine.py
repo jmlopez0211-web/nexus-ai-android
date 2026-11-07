@@ -32,12 +32,18 @@ class WirelessEngineInventoryTests(unittest.TestCase):
         self.assertNotIn("private-name", str(result))
 
     def test_empty_wifi_scan_is_valid_api_response(self):
+        import tempfile
+        from pathlib import Path
         mock = Mock(returncode=0, stdout="[]", stderr="")
-        with patch.object(engine.shutil, "which", return_value="/usr/bin/termux-wifi-scaninfo"), patch.object(engine.subprocess, "run", return_value=mock):
-            result = engine._wifi_api_check()
+        with tempfile.TemporaryDirectory() as directory:
+            # Isolate this test from the real device cache.
+            with patch.object(engine.Path, "home", return_value=Path(directory)):
+                with patch.object(engine.shutil, "which", return_value="/usr/bin/termux-wifi-scaninfo"):
+                    with patch.object(engine.subprocess, "run", return_value=mock):
+                        result = engine._wifi_api_check()
         self.assertTrue(result["ok"])
         self.assertEqual(result["network_count"], 0)
-
+        self.assertEqual(result["source"], "live_empty")
 
     def test_empty_scan_uses_recent_bridge_cache(self):
         import json

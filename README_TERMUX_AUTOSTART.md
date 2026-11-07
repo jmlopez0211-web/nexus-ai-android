@@ -48,3 +48,8 @@ El script de parada solicita detener el puente y evita que el supervisor lo rein
 El supervisor recupera una caída del proceso y una API que deja de responder. No puede recuperar fallos de Android que cierren Termux/Termux:Boot, falta de batería, revocación de permisos, desinstalación de Termux:API ni ausencia de red/paquetes. En esos casos NEXUS presenta el puente como desconectado y el registro local conserva el motivo cuando el proceso pudo escribirlo.
 
 No se configura un servicio remoto, túnel, puerto público ni ejecución de comandos arbitrarios. Los registros no contienen el token.
+
+
+## Compatibilidad con el comando de plugin antiguo
+
+Si Termux:Plugin intenta ejecutar `~/nexus-ai-android/nexus_bridge_watchdog.sh`, el repositorio incluye ese punto de entrada compatible. Tras actualizar el repositorio, ejecuta `chmod 700 ~/nexus-ai-android/nexus_bridge_watchdog.sh`. El instalador de arranque automático también aplica ese permiso. El script delega en `nexus_bridge_start.sh` y usa el supervisor existente; no crea un segundo servidor.
