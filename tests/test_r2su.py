@@ -32,6 +32,13 @@ class R2SUTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             r2su.create_task("wifi", "wifi_inventory", {"command": "anything"})
 
+    def test_wifi_driver_diagnostics_is_registered_and_executable(self):
+        with patch.object(r2su, "_execute", return_value={"ok": True, "component": "NEXUS Android Wi-Fi Driver Diagnostics"}) as execute:
+            created = r2su.create_task("Diagnóstico driver Wi-Fi", "wifi_driver_diagnostics", {})
+            result = r2su.run_task(created["task_id"])
+        self.assertTrue(result["ok"])
+        self.assertEqual(execute.call_args.args[0], "wifi_driver_diagnostics")
+
     def test_lan_task_requires_confirmation_and_private_ipv4(self):
         with self.assertRaises(PermissionError):
             r2su.create_task("LAN", "lan_scan", {"target": "192.168.1.1"})
